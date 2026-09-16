@@ -69,3 +69,19 @@ All return HTTP 422 with a machine code and a counter-readable message.
   and `TaxPolicy.slab_threshold_paisa`.
 
 ## Layout
+
+## Price list import (the Twist)
+
+`pricing/import_pricelist.py` cleans a messy seat-class price sheet
+(`data/messy_pricelist.csv`): duplicate names differing only by case,
+prices with currency symbols or comma separators, blank prices, negative
+prices, and unparseable text.
+
+```bash
+curl localhost:8000/import-pricelist
+```
+
+Returns three lists — `imported`, `deduplicated`, `rejected` — each row
+tagged with what happened and why. See REASONING.md for the exact rules
+(case-insensitive name matching, last-valid-price-wins on duplicates,
+rejection instead of guessing on bad data).

@@ -1352,3 +1352,195 @@ MDEOF
 That overwrites README.md cleanly with everything in place — no need to touch the editor at all. Click on the README.md tab afterward to confirm it now shows the full document with proper headings.
 
 Once that's done, you're ready for Step 15 (AI_LOGS.md) and the final push.
+
+1789552422447_image.png
+now how to run this project website
+
+This is a backend API, not a website with pages — but it has a built-in interactive UI at /docs that you can click around in. Here's how to get it running.
+
+In your Codespace terminal
+bash
+uvicorn api:app --reload --port 8000
+Leave that running. You'll see log lines like Uvicorn running on http://0.0.0.0:8000.
+
+Open it in the browser
+Click the Ports tab at the bottom (next to Terminal) in your Codespace. You should see port 8000 listed. Click the globe/link icon next to it — GitHub will open a forwarded URL like https://musical-halibut-xxxx-8000.app.github.dev.
+
+If port 8000 isn't listed yet, click Ports → Forward a Port → type 8000 → Enter.
+
+Once it opens
+Append /docs to that URL, e.g.:
+
+https://your-codespace-name-8000.app.github.dev/docs
+That gives you Swagger UI — a page where you can:
+
+See all three endpoints (/shows, /quote, /book)
+Click on /quote, hit "Try it out", paste in a JSON body, and click Execute to see the priced bill live in the browser
+Sample body to paste into /quote
+json
+{
+  "show_id": "SHOW-FRI-2100",
+  "items": [
+    {"tier": "GOLD", "qty": 2},
+    {"tier": "SILVER", "qty": 1}
+  ],
+  "offer_code": "FESTIVE50",
+  "is_member": true
+}
+That's your whole "site" for this project — a working priced-quote engine you can demo through Swagger. If you want, I can also help you spin up a tiny front-end page (a booking form) on top of it, but that's optional — the round only asked for the pricing engine.
+
+yes do it
+
+Building a simple booking form connected to the API.
+Building a simple booking form connected to the API.
+Let's add a simple booking-form frontend served directly by your API — no separate server needed, so it works cleanly through the Codespaces port forwarding.
+
+Step 1 — Create the static folder and page
+bash
+mkdir -p static
+cat > static/index.html <<'HTMLEOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Multiplex Booking Counter</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; background:#111; color:#eee; }
+  h1 { font-size: 1.4rem; }
+  label { display:block; margin-top: 14px; font-size: .9rem; color:#aaa; }
+  select, input { width:100%; padding:8px; margin-top:4px; background:#1c1c1c; color:#eee; border:1px solid #333; border-radius:6px; box-sizing:border-box; }
+  .tier-row { display:flex; gap:10px; align-items:center; margin-top:8px; }
+  .tier-row span { flex:1; }
+  .tier-row input { width:70px; }
+  button { margin-top:20px; padding:10px 16px; background:#4f8cff; color:#fff; border:0; border-radius:6px; cursor:pointer; font-size:1rem; }
+  button:hover { background:#3a75e0; }
+  #result { margin-top:24px; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; }
+  td, th { padding:6px 4px; border-bottom:1px solid #2a2a2a; text-align:left; font-size:.9rem; }
+  .total-row td { font-weight:bold; border-top:2px solid #555; }
+  .error { color:#ff6b6b; margin-top:16px; }
+  .checkbox-row { display:flex; align-items:center; gap:8px; margin-top:14px; }
+  .checkbox-row input { width:auto; }
+</style>
+</head>
+<body>
+  <h1>🎬 Multiplex Booking Counter</h1>
+
+  <label>Show</label>
+  <select id="show"></select>
+
+  <div id="tiers"></div>
+
+  <label>Offer code (optional)</label>
+  <input id="offer" placeholder="e.g. FESTIVE50">
+
+  <div class="checkbox-row">
+    <input type="checkbox" id="member">
+    <label style="margin:0">I'm a member</label>
+  </div>
+
+  <button onclick="getQuote()">Get Quote</button>
+
+  <div id="result"></div>
+
+<script>
+let currentShow = null;
+
+async function loadShows() {
+  const res = await fetch('/shows');
+  const shows = await res.json();
+  const sel = document.getElementById('show');
+  sel.innerHTML = shows.map(s => `<option value="${s.id}">${s.movie} — ${s.starts_at}</option>`).join('');
+  sel.onchange = () => renderTiers(shows.find(s => s.id === sel.value));
+  currentShow = shows[0];
+  renderTiers(currentShow);
+}
+
+function renderTiers(show) {
+  currentShow = show;
+  const div = document.getElementById('tiers');
+  div.innerHTML = show.tiers.map(t => `
+    <div class="tier-row">
+      <span>${t.name} — ₹${(t.price_paisa/100).toFixed(2)} ${t.bookable ? `(${t.seats_available} left)` : '(sold out)'}</span>
+      <input type="number" min="0" value="0" data-tier="${t.code}" ${t.bookable ? '' : 'disabled'}>
+    </div>`).join('');
+}
+
+async function getQuote() {
+  const items = [...document.querySelectorAll('#tiers input')]
+    .map(i => ({ tier: i.dataset.tier, qty: parseInt(i.value || '0', 10) }))
+    .filter(i => i.qty > 0);
+
+  const body = {
+    show_id: document.getElementById('show').value,
+    items,
+    offer_code: document.getElementById('offer').value || null,
+    is_member: document.getElementById('member').checked
+  };
+
+  const res = await fetch('/quote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  const result = document.getElementById('result');
+
+  if (!res.ok) {
+    result.innerHTML = `<div class="error">${data.message || 'Could not price this booking.'}</div>`;
+    return;
+  }
+
+  result.innerHTML = `
+    <table>
+      <tr><th>Line</th><th>Qty</th><th>Amount</th></tr>
+      ${data.breakup.map(b => `<tr><td>${b.label}</td><td></td><td>${b.amount}</td></tr>`).join('')}
+      <tr class="total-row"><td>Total payable</td><td></td><td>${data.totals.payable}</td></tr>
+    </table>`;
+}
+
+loadShows();
+</script>
+</body>
+</html>
+HTMLEOF
+Step 2 — Mount it in api.py
+bash
+python3 - <<'PYEOF'
+import re
+path = "api.py"
+src = open(path).read()
+if "StaticFiles" not in src:
+    src = src.replace(
+        "from fastapi import FastAPI",
+        "from fastapi import FastAPI\nfrom fastapi.staticfiles import StaticFiles"
+    )
+    src = src.replace(
+        'app = FastAPI(title="Multiplex Pricing Engine")',
+        'app = FastAPI(title="Multiplex Pricing Engine")\n'
+        'app.mount("/static", StaticFiles(directory="static", html=True), name="static")'
+    )
+    open(path, "w").write(src)
+    print("api.py updated")
+else:
+    print("already mounted")
+PYEOF
+Check it worked:
+
+bash
+grep -n "StaticFiles\|app.mount" api.py
+Step 3 — Run it
+bash
+uvicorn api:app --reload --port 8000
+Step 4 — Open it
+Go to the Ports tab, open the forwarded port-8000 URL, and append:
+
+/static/index.html
+You'll get a real booking form: pick a show, type ticket counts per tier, optionally enter FESTIVE50 and tick "member," hit Get Quote, and see the full line-by-line breakup with the total — live, from your actual pricing engine.
+
+Step 5 — Push it
+bash
+git add -A
+git commit -m "Add simple booking form frontend"
+git push
+Don't forget to re-paste this latest exchange into AI_LOGS.md before your final submission, since the log needs to be the complete, unmodified conversation.

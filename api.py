@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from pricing.models import Show, Offer, BookingItem
 from pricing.engine import quote, confirm
 from pricing.errors import PricingError, UnknownShow
+from pricing.import_pricelist import import_from_csv
 
 app = FastAPI(title="Multiplex Pricing Engine")
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
@@ -59,3 +60,10 @@ def post_book(req: QuoteReq):
     show, offer = _load(req)
     return confirm(show, [BookingItem(i.tier, i.qty) for i in req.items], offer,
                    req.is_member, booking_id=f"BK{abs(hash(str(req))) % 10**8:08d}")
+
+
+@app.get("/import-pricelist")
+def get_import_report():
+    """Runs the messy price-list cleaner over data/messy_pricelist.csv."""
+    report = import_from_csv("data/messy_pricelist.csv")
+    return report.as_dict()

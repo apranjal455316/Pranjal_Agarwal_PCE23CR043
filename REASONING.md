@@ -72,3 +72,34 @@ payable, and each rejection path.
 - Offer stacking rules (which offers combine) driven from config
 - CGST/SGST split and an invoice number on the printed bill
 - A rule-version stamp on every quote for audit and dispute handling
+
+## The Twist — importing a messy price list
+
+**Name matching.** Names are matched case-insensitively after trimming
+whitespace, since "Silver" and "silver" are clearly the same seat class
+typed twice. The display name is normalized to Title Case in the cleaned
+output.
+
+**Duplicate resolution.** The last valid price for a name wins. A messy
+sheet is usually the result of someone re-typing a corrected price further
+down the file, so treating later rows as updates matches how the sheet was
+probably built. A row that fails to parse is rejected and never overwrites
+a good price already held for that name — a bad row shouldn't erase a good
+one.
+
+**Price parsing.** Currency symbols (₹, Rs., INR) and thousands separators
+are stripped before parsing, so "₹1,200", "1200", and "Rs. 1200.00" all
+resolve to the same value. Parsing is done once into a `Decimal` and then
+converted to integer paisa through the same `rupees_to_paisa` used
+everywhere else in the engine, so an imported price behaves identically to
+one typed into `shows.json`.
+
+**Rejection, not silent correction.** Blank prices, negative prices, and
+unparseable text are rejected with a specific reason rather than guessed at
+or defaulted to zero — pricing a ticket at a guessed value is worse than
+refusing to import it and telling the counter why.
+
+**The report is the deliverable.** `import_price_list()` returns three
+lists — imported, deduplicated, rejected — each naming the exact row and
+reason, because "clean it and tell me what happened" is the actual ask, not
+just a cleaned file.
