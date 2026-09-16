@@ -13,37 +13,68 @@
   .tier-row input { width:70px; }
   button { margin-top:20px; padding:10px 16px; background:#4f8cff; color:#fff; border:0; border-radius:6px; cursor:pointer; font-size:1rem; }
   button:hover { background:#3a75e0; }
-  #result { margin-top:24px; }
+  button.secondary { background:#333; }
+  #result, #payment { margin-top:24px; }
   table { width:100%; border-collapse:collapse; margin-top:10px; }
   td, th { padding:6px 4px; border-bottom:1px solid #2a2a2a; text-align:left; font-size:.9rem; }
   .total-row td { font-weight:bold; border-top:2px solid #555; }
   .error { color:#ff6b6b; margin-top:16px; }
   .checkbox-row { display:flex; align-items:center; gap:8px; margin-top:14px; }
   .checkbox-row input { width:auto; }
+  .card { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:16px; margin-top:16px; }
+  .note { font-size:.8rem; color:#888; margin-top:6px; }
+  #app { display:none; }
+  .badge { display:inline-block; background:#2a2a2a; padding:3px 8px; border-radius:12px; font-size:.75rem; color:#9c9; }
 </style>
 </head>
 <body>
-  <h1>🎬 Multiplex Booking Counter</h1>
 
-  <label>Show</label>
-  <select id="show"></select>
-
-  <div id="tiers"></div>
-
-  <label>Offer code (optional)</label>
-  <input id="offer" placeholder="e.g. FESTIVE50">
-
-  <div class="checkbox-row">
-    <input type="checkbox" id="member">
-    <label style="margin:0">I'm a member</label>
+  <!-- ===== MOCK LOGIN (demo only, no real auth) ===== -->
+  <div id="login" class="card">
+    <h1>🎬 Multiplex Booking Counter</h1>
+    <p class="note">Demo login — no password check, no account storage. For hackathon demo purposes only.</p>
+    <label>Your name</label>
+    <input id="loginName" placeholder="e.g. Pranjal">
+    <div class="checkbox-row">
+      <input type="checkbox" id="loginMember">
+      <label style="margin:0">I'm a member</label>
+    </div>
+    <button onclick="login()">Continue</button>
   </div>
 
-  <button onclick="getQuote()">Get Quote</button>
+  <!-- ===== MAIN APP ===== -->
+  <div id="app">
+    <h1>🎬 Multiplex Booking Counter <span class="badge" id="whoami"></span></h1>
 
-  <div id="result"></div>
+    <label>Show</label>
+    <select id="show"></select>
+
+    <div id="tiers"></div>
+
+    <label>Offer code (optional)</label>
+    <input id="offer" placeholder="e.g. FESTIVE50">
+
+    <button onclick="getQuote()">Get Quote</button>
+
+    <div id="result"></div>
+    <div id="payment"></div>
+  </div>
 
 <script>
 let currentShow = null;
+let user = null;
+let lastQuoteRequestBody = null;
+
+function login() {
+  const name = document.getElementById('loginName').value.trim();
+  if (!name) { alert('Enter a name to continue.'); return; }
+  user = { name, isMember: document.getElementById('loginMember').checked };
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('whoami').textContent =
+    user.name + (user.isMember ? ' · member' : '');
+  loadShows();
+}
 
 async function loadShows() {
   const res = await fetch('/shows');
@@ -63,6 +94,7 @@ function renderTiers(show) {
       <span>${t.name} — ₹${(t.price_paisa/100).toFixed(2)} ${t.bookable ? `(${t.seats_available} left)` : '(sold out)'}</span>
       <input type="number" min="0" value="0" data-tier="${t.code}" ${t.bookable ? '' : 'disabled'}>
     </div>`).join('');
+  document.getElementById('payment').innerHTML = '';
 }
 
 async function getQuote() {
@@ -74,8 +106,9 @@ async function getQuote() {
     show_id: document.getElementById('show').value,
     items,
     offer_code: document.getElementById('offer').value || null,
-    is_member: document.getElementById('member').checked
+    is_member: user.isMember
   };
+  lastQuoteRequestBody = body;
 
   const res = await fetch('/quote', {
     method: 'POST',
@@ -84,9 +117,11 @@ async function getQuote() {
   });
   const data = await res.json();
   const result = document.getElementById('result');
+  const payment = document.getElementById('payment');
 
   if (!res.ok) {
     result.innerHTML = `<div class="error">${data.message || 'Could not price this booking.'}</div>`;
+    payment.innerHTML = '';
     return;
   }
 
@@ -96,9 +131,42 @@ async function getQuote() {
       ${data.breakup.map(b => `<tr><td>${b.label}</td><td></td><td>${b.amount}</td></tr>`).join('')}
       <tr class="total-row"><td>Total payable</td><td></td><td>${data.totals.payable}</td></tr>
     </table>`;
+
+  payment.innerHTML = `
+    <div class="card">
+      <p class="note">Demo payment — simulated only, no real card processing or gateway.</p>
+      <label>Card number (any digits)</label>
+      <input id="cardNum" placeholder="4242 4242 4242 4242">
+      <button onclick="pay('${data.totals.payable}')">Pay ${data.totals.payable}</button>
+    </div>`;
 }
 
-loadShows();
+async function pay(amountLabel) {
+  const card = document.getElementById('cardNum').value.trim();
+  if (!card) { alert('Enter any digits to simulate a card.'); return; }
+
+  const res = await fetch('/book', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(lastQuoteRequestBody)
+  });
+  const data = await res.json();
+  const payment = document.getElementById('payment');
+
+  if (!res.ok) {
+    payment.innerHTML = `<div class="error">${data.message || 'Booking failed.'}</div>`;
+    return;
+  }
+
+  payment.innerHTML = `
+    <div class="card">
+      ✅ <strong>Payment simulated — booking confirmed.</strong><br>
+      Booking ID: ${data.booking_id}<br>
+      Amount charged: ${data.totals.payable}
+      <p class="note">This is a simulated charge for demo purposes only.</p>
+    </div>`;
+  loadShows(); // refresh seat counts
+}
 </script>
 </body>
 </html>

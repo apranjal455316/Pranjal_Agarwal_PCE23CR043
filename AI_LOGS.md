@@ -1544,3 +1544,346 @@ git add -A
 git commit -m "Add simple booking form frontend"
 git push
 Don't forget to re-paste this latest exchange into AI_LOGS.md before your final submission, since the log needs to be the complete, unmodified conversation.
+ROUND 2  ·  BUILD ROUND
+Friday night at the multiplex
+The multiplex booking counter keeps mis-pricing tickets and the queue is getting angry. Seats come in tiers — Silver, Gold, Recliner — at different prices, and by showtime some tiers sell out and shouldn’t be bookable. There are offers on: a flat festival discount and a percentage off for members (capped). Every booking then adds a small per-ticket convenience fee and GST on top, and it all has to total to the exact paisa. Customers keep demanding a clear line-by-line breakup of the bill.
+Build a pricing engine the counter can trust.
+(The messy real-world money rules are the point — handle each correctly, and build it for any cinema counter, not one show. Get a plain booking total right first, then layer on the offers, the fee and the tax.)
+The Twist
+Your solution must also import a messy seat-class price list — with duplicate names (in different cases), prices in inconsistent formats, blank values, and negative prices. Clean it into a correct price list and report what was imported, de-duplicated, and rejected.
+
+Building a price list import and cleaning module.
+Building a price list import and cleaning module.
+No — good catch, the Twist is a separate requirement and hasn't been built yet. You need a module that imports a messy price list, cleans it, and reports what happened. Let's add it now, same style as before.
+
+What "done" needs to include for the Twist
+A messy input file (duplicate names in different cases, inconsistent price formats, blanks, negatives)
+A cleaner that normalizes names, parses prices robustly, de-duplicates, and rejects invalid rows
+A report: what was imported, what was de-duplicated (and which one won), what was rejected (and why)
+Tests for it
+An endpoint to run it (so it's demoable, not just a script)
+Step 1 — The messy input file
+bash
+cat > data/messy_pricelist.csv <<'CSVEOF'
+name,price
+Silver,100
+silver,₹95
+GOLD,250.00
+Gold, Rs. 260
+Recliner,"1,200"
+recliner,450
+Balcony,
+Premium,-300
+VIP,INR 500
+vip,500.5
+ Executive ,120
+Executive,abc
+CSVEOF
+That gives you: case-duplicate names (Silver/silver, Gold/Gold, Recliner/recliner, VIP/vip), currency symbols (₹, Rs., INR), a comma-formatted number ("1,200"), a blank price, a negative price, a non-numeric price, and stray whitespace in a name.
+
+Step 2 — pricing/import_pricelist.py
+bash
+cat > pricing/import_pricelist.py <<'PYEOF'
+"""Import a messy seat-class price list into clean paisa prices.
+
+Handles: duplicate names differing only by case, prices with currency
+symbols or thousands separators, blank prices, negative prices, and
+unparseable prices. Produces a cleaned list plus a report of what
+happened to every row.
+"""
+import csv
+import re
+from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
+from .money import rupees_to_paisa
+
+_CURRENCY_RE = re.compile(r"[₹]|rs\.?|inr", re.IGNORECASE)
+
+
+def _parse_price(raw: str):
+    """Return (paisa:int, None) on success or (None, reason:str) on failure."""
+    if raw is None:
+        return None, "blank price"
+    text = raw.strip()
+    if text == "":
+        return None, "blank price"
+    cleaned = _CURRENCY_RE.sub("", text)
+    cleaned = cleaned.replace(",", "").strip()
+    try:
+        value = Decimal(cleaned)
+    except InvalidOperation:
+        return None, f"unparseable price '{raw}'"
+    if value < 0:
+        return None, f"negative price '{raw}'"
+    return rupees_to_paisa(value), None
+
+
+@dataclass
+class ImportReport:
+    imported: list = field(default_factory=list)   # [{name, price_paisa}]
+    deduplicated: list = field(default_factory=list)  # [{name, kept_row, dropped_rows: [...]}]
+    rejected: list = field(default_factory=list)   # [{row, reason}]
+
+    def as_dict(self):
+        return {
+            "imported": self.imported,
+            "deduplicated": self.deduplicated,
+            "rejected": self.rejected,
+            "summary": {
+                "imported_count": len(self.imported),
+                "deduplicated_count": len(self.deduplicated),
+                "rejected_count": len(self.rejected),
+            },
+        }
+
+
+def import_price_list(rows):
+    """rows: iterable of dicts with 'name' and 'price' keys (raw strings).
+
+    Rule for duplicates (documented in REASONING.md): names are matched
+    case-insensitively after trimming whitespace. The LAST valid price
+    for a name wins, treating later rows as corrections/updates to
+    earlier ones -- consistent with how a counter re-keys a price sheet.
+    Rows that fail to parse never overwrite a good price.
+    """
+    report = ImportReport()
+    by_key = {}       # normalized name -> {"name": display_name, "price_paisa": int, "raw_row": row}
+    seen_rows = {}     # normalized name -> list of every accepted raw row (for the dedup log)
+
+    for row in rows:
+        name_raw = (row.get("name") or "").strip()
+        price_raw = row.get("price")
+
+        if not name_raw:
+            report.rejected.append({"row": dict(row), "reason": "blank name"})
+            continue
+
+        key = name_raw.lower()
+        paisa, err = _parse_price(price_raw)
+        if err:
+            report.rejected.append({"row": dict(row), "reason": err})
+            continue
+
+        display_name = name_raw[0].upper() + name_raw[1:].lower() if name_raw else name_raw
+        seen_rows.setdefault(key, []).append({"name": name_raw, "price_paisa": paisa})
+
+        if key in by_key:
+            report.deduplicated.append({
+                "name": display_name,
+                "dropped": {"name": by_key[key]["name"], "price_paisa": by_key[key]["price_paisa"]},
+                "kept": {"name": name_raw, "price_paisa": paisa},
+            })
+        by_key[key] = {"name": display_name, "price_paisa": paisa}
+
+    report.imported = [
+        {"name": v["name"], "price_paisa": v["price_paisa"]}
+        for v in sorted(by_key.values(), key=lambda v: v["name"])
+    ]
+    return report
+
+
+def import_from_csv(path):
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    return import_price_list(rows)
+PYEOF
+Step 3 — Wire it into api.py
+bash
+python3 - <<'PYEOF'
+path = "api.py"
+src = open(path).read()
+if "import_from_csv" not in src:
+    src = src.replace(
+        "from pricing.errors import PricingError, UnknownShow",
+        "from pricing.errors import PricingError, UnknownShow\n"
+        "from pricing.import_pricelist import import_from_csv"
+    )
+    src += '''
+
+@app.get("/import-pricelist")
+def get_import_report():
+    """Runs the messy price-list cleaner over data/messy_pricelist.csv."""
+    report = import_from_csv("data/messy_pricelist.csv")
+    return report.as_dict()
+'''
+    open(path, "w").write(src)
+    print("api.py updated with /import-pricelist")
+else:
+    print("already wired")
+PYEOF
+Step 4 — Tests
+bash
+cat > tests/test_import_pricelist.py <<'PYEOF'
+from pricing.import_pricelist import import_price_list
+
+ROWS = [
+    {"name": "Silver", "price": "100"},
+    {"name": "silver", "price": "₹95"},
+    {"name": "GOLD", "price": "250.00"},
+    {"name": "Gold", "price": "Rs. 260"},
+    {"name": "Recliner", "price": "1,200"},
+    {"name": "recliner", "price": "450"},
+    {"name": "Balcony", "price": ""},
+    {"name": "Premium", "price": "-300"},
+    {"name": "VIP", "price": "INR 500"},
+    {"name": "vip", "price": "500.5"},
+    {"name": " Executive ", "price": "120"},
+    {"name": "Executive", "price": "abc"},
+]
+
+
+def test_currency_symbols_and_commas_parsed():
+    r = import_price_list(ROWS)
+    names = {row["name"]: row["price_paisa"] for row in r.imported}
+    assert names["Recliner"] == 120000   # "1,200" -> Rs.1200
+    assert names["Vip"] == 50050         # "500.5" -> Rs.500.50
+
+
+def test_case_insensitive_dedup_last_valid_wins():
+    r = import_price_list(ROWS)
+    names = {row["name"]: row["price_paisa"] for row in r.imported}
+    assert names["Silver"] == 9500        # "₹95" (second row) wins over "100"
+    assert names["Gold"] == 26000         # "Rs. 260" wins over "250.00"
+
+
+def test_blank_and_negative_rejected():
+    r = import_price_list(ROWS)
+    reasons = [x["reason"] for x in r.rejected]
+    assert any("blank price" in x for x in reasons)
+    assert any("negative price" in x for x in reasons)
+
+
+def test_unparseable_price_does_not_overwrite_good_price():
+    r = import_price_list(ROWS)
+    names = {row["name"]: row["price_paisa"] for row in r.imported}
+    assert names["Executive"] == 12000    # "abc" row rejected, "120" row kept
+
+
+def test_report_counts_are_consistent():
+    r = import_price_list(ROWS)
+    d = r.as_dict()
+    assert d["summary"]["imported_count"] == len(r.imported)
+    assert d["summary"]["rejected_count"] == len(r.rejected)
+PYEOF
+Step 5 — Run everything
+bash
+pytest -q
+You should now see 15 passed (10 from before + 5 new). Then spot-check the live report:
+
+bash
+uvicorn api:app --reload --port 8000 &
+sleep 3
+curl -s localhost:8000/import-pricelist
+kill %1
+Copy that output — you'll want it in the README next to the quote sample.
+
+Step 6 — Update REASONING.md with the Twist decisions
+bash
+cat >> REASONING.md <<'MDEOF'
+
+## The Twist — importing a messy price list
+
+**Name matching.** Names are matched case-insensitively after trimming
+whitespace, since "Silver" and "silver" are clearly the same seat class
+typed twice. The display name is normalized to Title Case in the cleaned
+output.
+
+**Duplicate resolution.** The last valid price for a name wins. A messy
+sheet is usually the result of someone re-typing a corrected price further
+down the file, so treating later rows as updates matches how the sheet was
+probably built. A row that fails to parse is rejected and never overwrites
+a good price already held for that name — a bad row shouldn't erase a good
+one.
+
+**Price parsing.** Currency symbols (₹, Rs., INR) and thousands separators
+are stripped before parsing, so "₹1,200", "1200", and "Rs. 1200.00" all
+resolve to the same value. Parsing is done once into a `Decimal` and then
+converted to integer paisa through the same `rupees_to_paisa` used
+everywhere else in the engine, so an imported price behaves identically to
+one typed into `shows.json`.
+
+**Rejection, not silent correction.** Blank prices, negative prices, and
+unparseable text are rejected with a specific reason rather than guessed at
+or defaulted to zero — pricing a ticket at a guessed value is worse than
+refusing to import it and telling the counter why.
+
+**The report is the deliverable.** `import_price_list()` returns three
+lists — imported, deduplicated, rejected — each naming the exact row and
+reason, because "clean it and tell me what happened" is the actual ask, not
+just a cleaned file.
+MDEOF
+Step 7 — Add a section to README.md
+bash
+cat >> README.md <<'MDEOF'
+
+## Price list import (the Twist)
+
+`pricing/import_pricelist.py` cleans a messy seat-class price sheet
+(`data/messy_pricelist.csv`): duplicate names differing only by case,
+prices with currency symbols or comma separators, blank prices, negative
+prices, and unparseable text.
+
+```bash
+curl localhost:8000/import-pricelist
+```
+
+Returns three lists — `imported`, `deduplicated`, `rejected` — each row
+tagged with what happened and why. See REASONING.md for the exact rules
+(case-insensitive name matching, last-valid-price-wins on duplicates,
+rejection instead of guessing on bad data).
+MDEOF
+Step 8 — Push
+bash
+git add -A
+git commit -m "Add messy price-list import, cleaning, and report (the Twist)"
+git push
+Then paste this exchange into AI_LOGS.md too before you submit, since the log needs to stay the complete, unedited conversation.
+
+After this, your repo covers both parts of the problem statement: the pricing engine with offers/fee/GST, and the price-list import/clean/report twist.
+
+1789553280357_image.png
+Parsing CSV fields to resolve a pricing discrepancy.
+Parsing CSV fields to resolve a pricing discrepancy.
+That's not a bug in your import code — it's a wrong expectation in the test I wrote. Here's what actually happened:
+
+Your CSV has:
+
+Recliner,"1,200"
+recliner,450
+The rule we documented is last valid price wins on a duplicate name. recliner,450 comes after Recliner,"1,200", so 450 correctly overwrites 1,200. The code did exactly what it's supposed to do — 120000 → 45000. My test asserted the wrong value.
+
+Fix
+bash
+python3 - <<'PYEOF'
+path = "tests/test_import_pricelist.py"
+src = open(path).read()
+src = src.replace(
+    'assert names["Recliner"] == 120000   # "1,200" -> Rs.1200',
+    'assert names["Recliner"] == 45000    # "450" (later row) wins over "1,200"'
+)
+src = src.replace(
+    "def test_currency_symbols_and_commas_parsed():",
+    "def test_currency_symbols_and_commas_are_parsed_correctly():\n"
+    '    """Check the comma-formatted price parses right BEFORE dedup picks a winner."""\n'
+    '    from pricing.import_pricelist import _parse_price\n'
+    '    paisa, err = _parse_price("1,200")\n'
+    '    assert err is None\n'
+    '    assert paisa == 120000\n\n\n'
+    "def test_currency_symbols_and_commas_parsed():"
+)
+open(path, "w").write(src)
+print("fixed")
+PYEOF
+Then re-run:
+
+bash
+pytest -q
+You should now get 16 passed. The new test proves "1,200" itself parses correctly to 120000 paisa (isolated from the dedup logic), and the old test now correctly asserts that Recliner ends up at 45000 because the later row wins — which is the intended behavior, not a defect.
+
+Push it:
+
+bash
+git add -A
+git commit -m "Fix test assertion: last-valid-price-wins is correct behavior for Recliner dedup"
+git push
+And add this fix to AI_LOGS.md along with the rest before final submission.
