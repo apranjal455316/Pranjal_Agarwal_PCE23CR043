@@ -173,13 +173,32 @@
   <!-- ===== MOCK LOGIN ===== -->
   <div id="login" class="card">
     <h2>Sign in to book</h2>
-    <p class="note">Demo login only — no password, no account storage.</p>
-    <label>Your name</label>
-    <input id="loginName" placeholder="e.g. Pranjal">
+    <p class="note">Demo login only — details are used for this session's booking confirmation, not stored on any server.</p>
+
+    <label>Full name</label>
+    <input id="loginName" placeholder="e.g. Pranjal Agarwal">
+
+    <div class="row2">
+      <div>
+        <label>Contact number</label>
+        <input id="loginPhone" placeholder="10-digit mobile number" maxlength="10">
+      </div>
+      <div>
+        <label>Email</label>
+        <input id="loginEmail" type="email" placeholder="you@example.com">
+      </div>
+    </div>
+
+    <label>City</label>
+    <input id="loginCity" placeholder="e.g. Jaipur">
+
     <div class="checkbox-row">
       <input type="checkbox" id="loginMember">
       <label>I'm a member</label>
     </div>
+
+    <div id="loginError" class="error" style="display:none"></div>
+
     <button class="btn" onclick="login()">Continue</button>
   </div>
 
@@ -228,8 +247,29 @@ let selectedUpiApp = 'gpay';
 
 function login() {
   const name = document.getElementById('loginName').value.trim();
-  if (!name) { alert('Enter a name to continue.'); return; }
-  user = { name, isMember: document.getElementById('loginMember').checked };
+  const phone = document.getElementById('loginPhone').value.trim();
+  const email = document.getElementById('loginEmail').value.trim();
+  const city = document.getElementById('loginCity').value.trim();
+  const errBox = document.getElementById('loginError');
+
+  const phoneOk = /^[6-9]\d{9}$/.test(phone);
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  if (!name || !phoneOk || !emailOk) {
+    let msg = [];
+    if (!name) msg.push('name');
+    if (!phoneOk) msg.push('a valid 10-digit mobile number');
+    if (!emailOk) msg.push('a valid email');
+    errBox.textContent = 'Please enter ' + msg.join(', ') + '.';
+    errBox.style.display = 'block';
+    return;
+  }
+  errBox.style.display = 'none';
+
+  user = {
+    name, phone, email, city,
+    isMember: document.getElementById('loginMember').checked
+  };
   document.getElementById('login').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('whoami').textContent = user.name + (user.isMember ? ' · member' : '');
@@ -476,7 +516,8 @@ async function pay(amountLabel) {
         <div class="check">✅</div>
         <div class="amount">${data.totals.payable} paid via ${methodLabel}</div>
         <div class="bid">Booking ID: ${data.booking_id}</div>
-        <p class="note">Simulated payment — no real transaction was processed.</p>
+        <div class="bid">Ticket confirmation to: ${user.email} · ${user.phone}</div>
+        <p class="note">Simulated payment — no real transaction was processed. No email/SMS is actually sent.</p>
       </div>
       <button class="btn ghost" onclick="loadShows(); document.getElementById('payment').innerHTML=''; document.getElementById('result').innerHTML='';">Book another show</button>
     </div>`;
