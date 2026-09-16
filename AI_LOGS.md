@@ -2445,3 +2445,194 @@ git push
 Reload /static/index.html — each tier now shows a grid of individual seat boxes (A1, A2… by row), you click seats to select/deselect them (turns purple), the taken/sold-out ones are struck through and disabled, and the count of clicked seats per tier drives the same quote you had before. The ticket cap is gone.
 
 Be honest about this in REASONING.md if you use it in your demo — something like: "Seat selection is a UI layer over tier-level pricing; seats are not individually tracked or held server-side." That protects you if an evaluator clicks two different seats in the same tier and asks why they're priced identically (they are — pricing is still per-tier, as the problem statement actually asks for).
+
+make this websites features like bookmyshow website but only include movies
+
+Scoping a movie-listing app similar to BookMyShow.
+Scoping a movie-listing app similar to BookMyShow.
+I want to stop and flag something important rather than just building this.
+
+You're now asking for a BookMyShow clone (movie browsing/listing UI) on top of an assignment that is specifically a backend pricing-rules problem — tiers, offers, fee, tax, exact-paisa totals, plus the messy price-list import. That's it. Everything since the seat map — login, payment tabs, seat picker, and now a full movie browsing experience — is not graded and is eating time you may not have.
+
+A few real risks here:
+
+The 2.5-hour window is strict ("any submission received after the window closes will not be entertained"). If you're still mid-assessment, every minute spent on movie posters and browsing pages is a minute not spent making sure the actual graded logic (offers, GST slabs, discount allocation, the Twist import) is airtight and tested.
+Evaluators are grading against the problem statement, not visual polish. A gorgeous BookMyShow clone with a shaky pricing engine scores worse than a plain form with a bulletproof, well-tested engine and a sharp REASONING.md.
+Scope drift is itself a signal. The round explicitly says "no further explanation or specification will be provided beyond that statement" — it's testing whether you can interpret and correctly implement the stated messy-money problem, not whether you can out-guess the brief with unrelated features.
+So — genuine question, not a stall: how much time do you have left in the 2.5-hour window right now?
+
+If you're close to the limit: stop here, don't touch the frontend further. Go re-verify pytest -q passes, confirm README/REASONING/AI_LOGS are complete and pushed, and submit the form. That protects your score.
+If you've got real time to spare and the core is solid and tested: tell me, and I'll add one or two BookMyShow-style touches (like a movie poster grid before the show-picker) quickly — but I'd still keep it minimal rather than building a full clone, because it doesn't move your grade.
+What's your time situation?
+
+yes work on poster
+
+Building a movie poster grid with selection screen.
+Building a movie poster grid with selection screen.
+Good call keeping it scoped to just posters. One note: I'll use stylized gradient placeholder cards instead of pulling real movie poster images — actual studio posters are copyrighted, and your movie titles ("Midnight Express", "Racing Hearts", etc.) are placeholder names anyway, not real releases, so real posters wouldn't match them either.
+
+bash
+python3 - <<'PYEOF'
+path = "static/index.html"
+src = open(path).read()
+
+# --- CSS for poster grid ---
+css_insert = '''
+  .poster-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:14px; margin-top:4px;}
+  .poster-card{
+    cursor:pointer; border-radius:14px; overflow:hidden; border:1px solid var(--border);
+    background:var(--card2); transition:transform .15s, border-color .15s; position:relative;
+  }
+  .poster-card:hover{transform:translateY(-3px); border-color:var(--accent);}
+  .poster-card.active{border-color:var(--accent2); box-shadow:0 0 0 2px rgba(0,210,168,.3);}
+  .poster-art{
+    height:190px; display:flex; align-items:center; justify-content:center; font-size:3rem;
+    position:relative; overflow:hidden;
+  }
+  .poster-art::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(180deg, transparent 40%, rgba(0,0,0,.55));
+  }
+  .poster-badge{
+    position:absolute; top:8px; left:8px; z-index:1; background:rgba(0,0,0,.5); backdrop-filter:blur(2px);
+    padding:3px 8px; border-radius:8px; font-size:.65rem; color:var(--accent2); border:1px solid rgba(0,210,168,.4);
+  }
+  .poster-meta{padding:10px 12px;}
+  .poster-title{font-weight:600; font-size:.88rem; line-height:1.25;}
+  .poster-sub{color:var(--muted); font-size:.72rem; margin-top:3px;}
+  .poster-price{color:var(--accent2); font-size:.75rem; margin-top:6px;}
+  .back-link{color:var(--muted); font-size:.85rem; cursor:pointer; display:inline-block; margin-bottom:14px;}
+  .back-link:hover{color:var(--text);}
+  #posterScreen{display:block;}
+  #bookingScreen{display:none;}
+'''
+src = src.replace("  #app{display:none;}", css_insert + "\n  #app{display:none;}")
+
+# --- wrap the existing booking card in a posterScreen/bookingScreen split ---
+old_app_open = '''  <!-- ===== MAIN APP ===== -->
+  <div id="app">
+    <div class="card">
+      <h2>Select show <span class="badge" id="whoami"></span></h2>
+      <select id="show"></select>'''
+new_app_open = '''  <!-- ===== MAIN APP ===== -->
+  <div id="app">
+
+    <!-- Poster browse screen -->
+    <div id="posterScreen">
+      <div class="card">
+        <h2>Now Showing <span class="badge" id="whoami"></span></h2>
+        <div id="posterGrid" class="poster-grid"></div>
+      </div>
+    </div>
+
+    <!-- Booking screen (shown after picking a movie) -->
+    <div id="bookingScreen">
+      <span class="back-link" onclick="backToPosters()">← Back to Now Showing</span>
+      <div class="card">
+        <h2 id="bookingTitle">Select show</h2>
+        <select id="show"></select>'''
+assert old_app_open in src
+src = src.replace(old_app_open, new_app_open)
+
+# close the extra div we opened (bookingScreen) right before the tiers/offer card closes -> find the closing of that card + payment div wrap
+old_close = '''      <button class="btn" onclick="getQuote()">Get Quote</button>
+      <div id="result"></div>
+    </div>
+
+    <div id="payment"></div>
+  </div>'''
+new_close = '''      <button class="btn" onclick="getQuote()">Get Quote</button>
+      <div id="result"></div>
+      </div>
+
+      <div id="payment"></div>
+    </div>
+  </div>'''
+assert old_close in src
+src = src.replace(old_close, new_close)
+
+# --- JS: build poster data (gradients + emoji, no real copyrighted art) and wire navigation ---
+old_loadshows = '''async function loadShows() {
+  const res = await fetch('/shows');
+  const shows = await res.json();
+  const sel = document.getElementById('show');
+  sel.innerHTML = shows.map(s => `<option value="${s.id}">${s.movie} — ${new Date(s.starts_at).toLocaleString()}</option>`).join('');
+  sel.onchange = () => renderTiers(shows.find(s => s.id === sel.value));
+  renderTiers(shows[0]);
+}'''
+
+new_loadshows = '''const POSTER_STYLES = [
+  { grad:'linear-gradient(135deg,#6c5ce7,#341f97)', emoji:'🎬' },
+  { grad:'linear-gradient(135deg,#00d2a8,#0b8457)', emoji:'🏎️' },
+  { grad:'linear-gradient(135deg,#ff5d6c,#7d1935)', emoji:'🌩️' },
+  { grad:'linear-gradient(135deg,#ffb020,#a85700)', emoji:'🎭' },
+  { grad:'linear-gradient(135deg,#3742fa,#1e2761)', emoji:'🕵️' },
+];
+
+let allShows = [];
+
+async function loadShows() {
+  const res = await fetch('/shows');
+  allShows = await res.json();
+  renderPosterGrid();
+  document.getElementById('posterScreen').style.display = 'block';
+  document.getElementById('bookingScreen').style.display = 'none';
+}
+
+function renderPosterGrid() {
+  const grid = document.getElementById('posterGrid');
+  grid.innerHTML = allShows.map((s, i) => {
+    const style = POSTER_STYLES[i % POSTER_STYLES.length];
+    const cheapest = Math.min(...s.tiers.map(t => t.price_paisa)) / 100;
+    const dt = new Date(s.starts_at);
+    return `
+      <div class="poster-card" data-id="${s.id}" onclick="chooseMovie('${s.id}')">
+        <div class="poster-art" style="background:${style.grad}">
+          <span class="poster-badge">${s.screen || ''}</span>
+          ${style.emoji}
+        </div>
+        <div class="poster-meta">
+          <div class="poster-title">${s.movie}</div>
+          <div class="poster-sub">${dt.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})} · ${dt.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="poster-price">From ₹${cheapest.toFixed(0)}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function chooseMovie(id) {
+  document.getElementById('posterScreen').style.display = 'none';
+  document.getElementById('bookingScreen').style.display = 'block';
+  const sel = document.getElementById('show');
+  sel.innerHTML = allShows.map(s => `<option value="${s.id}" ${s.id===id?'selected':''}>${s.movie} — ${new Date(s.starts_at).toLocaleString()}</option>`).join('');
+  sel.onchange = () => renderTiers(allShows.find(s => s.id === sel.value));
+  const show = allShows.find(s => s.id === id);
+  document.getElementById('bookingTitle').textContent = show.movie;
+  renderTiers(show);
+}
+
+function backToPosters() {
+  document.getElementById('posterScreen').style.display = 'block';
+  document.getElementById('bookingScreen').style.display = 'none';
+}'''
+assert old_loadshows in src
+src = src.replace(old_loadshows, new_loadshows)
+
+# also update bookingTitle when the show dropdown itself changes
+src = src.replace(
+    "sel.onchange = () => renderTiers(allShows.find(s => s.id === sel.value));\n  const show = allShows.find(s => s.id === id);",
+    "sel.onchange = () => { const sh = allShows.find(s => s.id === sel.value); document.getElementById('bookingTitle').textContent = sh.movie; renderTiers(sh); };\n  const show = allShows.find(s => s.id === id);"
+)
+
+open(path, "w").write(src)
+print("poster grid added")
+PYEOF
+Push it:
+
+bash
+git add -A
+git commit -m "Add Now Showing poster grid as movie selection screen"
+git push
+Reload /static/index.html — after login you'll land on a "Now Showing" poster grid (gradient art cards with an emoji, showtime, screen, and starting price), click a poster to open that movie's seat-booking screen, with a "← Back to Now Showing" link to return.
+
+You now have a fairly complete demo. Given how far this has drifted from the brief, I'd genuinely stop UI work here — go run pytest -q one more time, double check README/REASONING/AI_LOGS are current and pushed, and get the form submitted before your window closes.
