@@ -66,9 +66,18 @@ def test_overbooking_rejected():
         quote(show(), [BookingItem("GOLD", 7)])
 
 
-def test_booking_limit():
+def test_booking_limit_enforced_when_set():
+    s = show()
+    s.max_tickets_per_booking = 10
     with pytest.raises(BookingLimitExceeded):
-        quote(show(), [BookingItem("SILVER", 11)])
+        quote(s, [BookingItem("SILVER", 11)])
+
+
+def test_no_limit_when_max_is_zero():
+    s = show()
+    s.max_tickets_per_booking = 0
+    q = quote(s, [BookingItem("SILVER", 20)])
+    assert q["tickets"] == 20
 
 
 def test_empty_booking():

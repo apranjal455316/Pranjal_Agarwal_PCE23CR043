@@ -107,6 +107,29 @@
   .success .bid{color:var(--muted); font-size:.85rem;}
 
   #login{max-width:400px; margin:80px auto 0;}
+
+  .seat-map{margin-top:16px;}
+  .seat-tier-block{margin-top:16px;}
+  .seat-tier-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .seat-tier-head .name{font-weight:600;}
+  .seat-tier-head .price{color:var(--accent2); font-size:.85rem;}
+  .screen-curve{
+    height:10px; margin:4px auto 20px; width:90%; border-radius:50%;
+    background:linear-gradient(180deg, rgba(108,92,231,.5), transparent);
+  }
+  .screen-label{text-align:center; color:var(--muted); font-size:.7rem; letter-spacing:2px; margin-top:-14px;}
+  .seat-grid{display:flex; flex-wrap:wrap; gap:8px;}
+  .seat{
+    width:34px; height:34px; border-radius:8px 8px 4px 4px; display:flex; align-items:center; justify-content:center;
+    font-size:.7rem; cursor:pointer; border:1px solid var(--border); background:var(--card2); color:var(--muted);
+    user-select:none; transition:.12s;
+  }
+  .seat:hover{border-color:var(--accent);}
+  .seat.selected{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .seat.taken{background:#2a2f3d; color:#555; cursor:not-allowed; text-decoration:line-through;}
+  .legend{display:flex; gap:16px; margin-top:14px; font-size:.78rem; color:var(--muted);}
+  .legend .dot{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px;}
+
   #app{display:none;}
 </style>
 </head>
@@ -136,7 +159,7 @@
     <div class="card">
       <h2>Select show <span class="badge" id="whoami"></span></h2>
       <select id="show"></select>
-      <div id="tiers" class="show-grid"></div>
+      <div class="screen-curve"></div><div class="screen-label">SCREEN THIS WAY</div><div id="tiers" class="seat-map"></div><div class="legend"><span><span class="dot" style="background:var(--card2);border:1px solid var(--border)"></span>Available</span><span><span class="dot" style="background:var(--accent)"></span>Selected</span><span><span class="dot" style="background:#2a2f3d"></span>Taken</span></div>
 
       <label>Offer code (optional)</label>
       <input id="offer" placeholder="e.g. FESTIVE50">
@@ -181,25 +204,61 @@ async function loadShows() {
   renderTiers(shows[0]);
 }
 
+let selectedSeats = {}; // tier -> Set of seat labels
+
 function renderTiers(show) {
   currentShow = show;
-  document.getElementById('tiers').innerHTML = show.tiers.map(t => `
-    <div class="tier-row ${t.bookable ? '' : 'sold-out'}">
-      <div class="info">
-        <div class="tier-name">${t.name}</div>
-        <div class="tier-price">₹${(t.price_paisa/100).toFixed(2)}</div>
-        <div class="tier-seats">${t.bookable ? t.seats_available + ' seats left' : 'Sold out'}</div>
-      </div>
-      <input type="number" min="0" value="0" data-tier="${t.code}" ${t.bookable ? '' : 'disabled'}>
-    </div>`).join('');
+  selectedSeats = {};
+  const MAX_RENDER = 60; // cap seats drawn per tier so the grid stays usable
+  const container = document.getElementById('tiers');
+
+  container.innerHTML = show.tiers.map(t => {
+    selectedSeats[t.code] = new Set();
+    const rowLen = 10;
+    const total = t.bookable ? Math.min(t.seats_available, MAX_RENDER) : Math.min(10, MAX_RENDER);
+    const takenCount = t.bookable ? 0 : total; // sold-out tier: all shown as taken
+    let seats = '';
+    for (let i = 0; i < total; i++) {
+      const row = String.fromCharCode(65 + Math.floor(i / rowLen));
+      const col = (i % rowLen) + 1;
+      const label = row + col;
+      const isTaken = i < takenCount;
+      seats += `<div class="seat ${isTaken ? 'taken' : ''}" data-tier="${t.code}" data-seat="${label}"
+                   onclick="toggleSeat(this)">${label}</div>`;
+    }
+    return `
+      <div class="seat-tier-block">
+        <div class="seat-tier-head">
+          <span class="name">${t.name}</span>
+          <span class="price">₹${(t.price_paisa/100).toFixed(2)} · ${t.bookable ? t.seats_available + ' left' : 'Sold out'}</span>
+        </div>
+        <div class="seat-grid">${seats}</div>
+      </div>`;
+  }).join('');
+
   document.getElementById('result').innerHTML = '';
   document.getElementById('payment').innerHTML = '';
 }
 
+function toggleSeat(el) {
+  if (el.classList.contains('taken')) return;
+  const tier = el.dataset.tier;
+  const seat = el.dataset.seat;
+  if (selectedSeats[tier].has(seat)) {
+    selectedSeats[tier].delete(seat);
+    el.classList.remove('selected');
+  } else {
+    selectedSeats[tier].add(seat);
+    el.classList.add('selected');
+  }
+}
+
 async function getQuote() {
-  const items = [...document.querySelectorAll('#tiers input')]
-    .map(i => ({ tier: i.dataset.tier, qty: parseInt(i.value || '0', 10) }))
+  const items = Object.entries(selectedSeats)
+    .map(([tier, seats]) => ({ tier, qty: seats.size }))
     .filter(i => i.qty > 0);
+
+  if (items.length === 0) { alert('Select at least one seat.'); return; }
 
   const body = {
     show_id: document.getElementById('show').value,

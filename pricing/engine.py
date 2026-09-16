@@ -31,7 +31,8 @@ def quote(show, items, offer=None, is_member=False):
         merged[key] = merged.get(key, 0) + it.qty
 
     total_tickets = sum(merged.values())
-    if total_tickets > show.max_tickets_per_booking:
+    # max_tickets_per_booking <= 0 means unlimited for that show.
+    if show.max_tickets_per_booking > 0 and total_tickets > show.max_tickets_per_booking:
         raise BookingLimitExceeded(
             f"Maximum {show.max_tickets_per_booking} tickets per booking.",
             requested=total_tickets)

@@ -6,11 +6,27 @@
       "screen": "Audi 3",
       "starts_at": "2026-09-18T21:00:00+05:30",
       "convenience_fee_per_ticket": 25,
-      "max_tickets_per_booking": 10,
+      "max_tickets_per_booking": 0,
       "tiers": [
-        {"code": "SILVER", "name": "Silver", "price": 100, "seats_available": 40},
-        {"code": "GOLD", "name": "Gold", "price": 250, "seats_available": 6},
-        {"code": "RECLINER", "name": "Recliner", "price": 450, "seats_available": 0, "sold_out": true}
+        {
+          "code": "SILVER",
+          "name": "Silver",
+          "price": 100,
+          "seats_available": 40
+        },
+        {
+          "code": "GOLD",
+          "name": "Gold",
+          "price": 250,
+          "seats_available": 6
+        },
+        {
+          "code": "RECLINER",
+          "name": "Recliner",
+          "price": 450,
+          "seats_available": 0,
+          "sold_out": true
+        }
       ]
     },
     {
@@ -19,11 +35,26 @@
       "screen": "Audi 1",
       "starts_at": "2026-09-19T18:00:00+05:30",
       "convenience_fee_per_ticket": 20,
-      "max_tickets_per_booking": 8,
+      "max_tickets_per_booking": 0,
       "tiers": [
-        {"code": "SILVER", "name": "Silver", "price": 90, "seats_available": 50},
-        {"code": "GOLD", "name": "Gold", "price": 220, "seats_available": 30},
-        {"code": "RECLINER", "name": "Recliner", "price": 400, "seats_available": 10}
+        {
+          "code": "SILVER",
+          "name": "Silver",
+          "price": 90,
+          "seats_available": 50
+        },
+        {
+          "code": "GOLD",
+          "name": "Gold",
+          "price": 220,
+          "seats_available": 30
+        },
+        {
+          "code": "RECLINER",
+          "name": "Recliner",
+          "price": 400,
+          "seats_available": 10
+        }
       ]
     },
     {
@@ -32,15 +63,35 @@
       "screen": "Audi 2",
       "starts_at": "2026-09-20T15:00:00+05:30",
       "convenience_fee_per_ticket": 30,
-      "max_tickets_per_booking": 6,
+      "max_tickets_per_booking": 0,
       "tiers": [
-        {"code": "SILVER", "name": "Silver", "price": 120, "seats_available": 20},
-        {"code": "GOLD", "name": "Gold", "price": 280, "seats_available": 15},
-        {"code": "RECLINER", "name": "Recliner", "price": 500, "seats_available": 4}
+        {
+          "code": "SILVER",
+          "name": "Silver",
+          "price": 120,
+          "seats_available": 20
+        },
+        {
+          "code": "GOLD",
+          "name": "Gold",
+          "price": 280,
+          "seats_available": 15
+        },
+        {
+          "code": "RECLINER",
+          "name": "Recliner",
+          "price": 500,
+          "seats_available": 4
+        }
       ]
     }
   ],
   "offers": {
-    "FESTIVE50": {"code": "FESTIVE50", "festival_flat": 50, "member_pct": 10, "member_cap": 75}
+    "FESTIVE50": {
+      "code": "FESTIVE50",
+      "festival_flat": 50,
+      "member_pct": 10,
+      "member_cap": 75
+    }
   }
 }
