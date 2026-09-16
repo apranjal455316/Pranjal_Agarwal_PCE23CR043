@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Optional, List
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pricing.models import Show, Offer, BookingItem
@@ -9,6 +10,7 @@ from pricing.engine import quote, confirm
 from pricing.errors import PricingError, UnknownShow
 
 app = FastAPI(title="Multiplex Pricing Engine")
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 raw = json.loads(Path("data/shows.json").read_text())
 SHOWS = {s["id"]: Show.from_dict(s) for s in raw["shows"]}
 OFFERS = {k: Offer.from_dict(v) for k, v in raw.get("offers", {}).items()}

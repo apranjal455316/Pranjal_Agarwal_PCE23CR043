@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Multiplex Booking Counter</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; background:#111; color:#eee; }
+  h1 { font-size: 1.4rem; }
+  label { display:block; margin-top: 14px; font-size: .9rem; color:#aaa; }
+  select, input { width:100%; padding:8px; margin-top:4px; background:#1c1c1c; color:#eee; border:1px solid #333; border-radius:6px; box-sizing:border-box; }
+  .tier-row { display:flex; gap:10px; align-items:center; margin-top:8px; }
+  .tier-row span { flex:1; }
+  .tier-row input { width:70px; }
+  button { margin-top:20px; padding:10px 16px; background:#4f8cff; color:#fff; border:0; border-radius:6px; cursor:pointer; font-size:1rem; }
+  button:hover { background:#3a75e0; }
+  #result { margin-top:24px; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; }
+  td, th { padding:6px 4px; border-bottom:1px solid #2a2a2a; text-align:left; font-size:.9rem; }
+  .total-row td { font-weight:bold; border-top:2px solid #555; }
+  .error { color:#ff6b6b; margin-top:16px; }
+  .checkbox-row { display:flex; align-items:center; gap:8px; margin-top:14px; }
+  .checkbox-row input { width:auto; }
+</style>
+</head>
+<body>
+  <h1>🎬 Multiplex Booking Counter</h1>
+
+  <label>Show</label>
+  <select id="show"></select>
+
+  <div id="tiers"></div>
+
+  <label>Offer code (optional)</label>
+  <input id="offer" placeholder="e.g. FESTIVE50">
+
+  <div class="checkbox-row">
+    <input type="checkbox" id="member">
+    <label style="margin:0">I'm a member</label>
+  </div>
+
+  <button onclick="getQuote()">Get Quote</button>
+
+  <div id="result"></div>
+
+<script>
+let currentShow = null;
+
+async function loadShows() {
+  const res = await fetch('/shows');
+  const shows = await res.json();
+  const sel = document.getElementById('show');
+  sel.innerHTML = shows.map(s => `<option value="${s.id}">${s.movie} — ${s.starts_at}</option>`).join('');
+  sel.onchange = () => renderTiers(shows.find(s => s.id === sel.value));
+  currentShow = shows[0];
+  renderTiers(currentShow);
+}
+
+function renderTiers(show) {
+  currentShow = show;
+  const div = document.getElementById('tiers');
+  div.innerHTML = show.tiers.map(t => `
+    <div class="tier-row">
+      <span>${t.name} — ₹${(t.price_paisa/100).toFixed(2)} ${t.bookable ? `(${t.seats_available} left)` : '(sold out)'}</span>
+      <input type="number" min="0" value="0" data-tier="${t.code}" ${t.bookable ? '' : 'disabled'}>
+    </div>`).join('');
+}
+
+async function getQuote() {
+  const items = [...document.querySelectorAll('#tiers input')]
+    .map(i => ({ tier: i.dataset.tier, qty: parseInt(i.value || '0', 10) }))
+    .filter(i => i.qty > 0);
+
+  const body = {
+    show_id: document.getElementById('show').value,
+    items,
+    offer_code: document.getElementById('offer').value || null,
+    is_member: document.getElementById('member').checked
+  };
+
+  const res = await fetch('/quote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  const result = document.getElementById('result');
+
+  if (!res.ok) {
+    result.innerHTML = `<div class="error">${data.message || 'Could not price this booking.'}</div>`;
+    return;
+  }
+
+  result.innerHTML = `
+    <table>
+      <tr><th>Line</th><th>Qty</th><th>Amount</th></tr>
+      ${data.breakup.map(b => `<tr><td>${b.label}</td><td></td><td>${b.amount}</td></tr>`).join('')}
+      <tr class="total-row"><td>Total payable</td><td></td><td>${data.totals.payable}</td></tr>
+    </table>`;
+}
+
+loadShows();
+</script>
+</body>
+</html>
