@@ -2,68 +2,164 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Multiplex Booking Counter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CineHub — Book Your Show</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; background:#111; color:#eee; }
-  h1 { font-size: 1.4rem; }
-  label { display:block; margin-top: 14px; font-size: .9rem; color:#aaa; }
-  select, input { width:100%; padding:8px; margin-top:4px; background:#1c1c1c; color:#eee; border:1px solid #333; border-radius:6px; box-sizing:border-box; }
-  .tier-row { display:flex; gap:10px; align-items:center; margin-top:8px; }
-  .tier-row span { flex:1; }
-  .tier-row input { width:70px; }
-  button { margin-top:20px; padding:10px 16px; background:#4f8cff; color:#fff; border:0; border-radius:6px; cursor:pointer; font-size:1rem; }
-  button:hover { background:#3a75e0; }
-  button.secondary { background:#333; }
-  #result, #payment { margin-top:24px; }
-  table { width:100%; border-collapse:collapse; margin-top:10px; }
-  td, th { padding:6px 4px; border-bottom:1px solid #2a2a2a; text-align:left; font-size:.9rem; }
-  .total-row td { font-weight:bold; border-top:2px solid #555; }
-  .error { color:#ff6b6b; margin-top:16px; }
-  .checkbox-row { display:flex; align-items:center; gap:8px; margin-top:14px; }
-  .checkbox-row input { width:auto; }
-  .card { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:16px; margin-top:16px; }
-  .note { font-size:.8rem; color:#888; margin-top:6px; }
-  #app { display:none; }
-  .badge { display:inline-block; background:#2a2a2a; padding:3px 8px; border-radius:12px; font-size:.75rem; color:#9c9; }
+  :root{
+    --bg:#0b0d14; --card:#141826; --card2:#1b2032; --border:#2a3146;
+    --text:#f2f4f8; --muted:#8b93a7; --accent:#6c5ce7; --accent2:#00d2a8;
+    --danger:#ff5d6c; --gold:#ffb020;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:'Segoe UI',system-ui,sans-serif; margin:0; min-height:100vh;
+    background:radial-gradient(1200px 600px at 50% -10%, #1c2138, var(--bg));
+    color:var(--text);
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:32px 18px 60px;}
+  .brand{display:flex; align-items:center; gap:10px; margin-bottom:26px;}
+  .brand .logo{
+    width:38px; height:38px; border-radius:10px;
+    background:linear-gradient(135deg, var(--accent), var(--accent2));
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+  }
+  .brand h1{font-size:1.3rem; margin:0;}
+  .brand span{color:var(--muted); font-size:.8rem;}
+
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:22px; margin-bottom:18px; box-shadow:0 8px 24px rgba(0,0,0,.25);
+  }
+  h2{font-size:1rem; margin:0 0 14px; color:var(--text);}
+  label{display:block; font-size:.8rem; color:var(--muted); margin-top:14px; margin-bottom:6px;}
+  select, input{
+    width:100%; padding:11px 12px; background:var(--card2); color:var(--text);
+    border:1px solid var(--border); border-radius:10px; font-size:.95rem; outline:none;
+    transition:border-color .15s;
+  }
+  select:focus, input:focus{border-color:var(--accent);}
+
+  .show-grid{display:grid; grid-template-columns:1fr; gap:10px;}
+  .tier-row{
+    display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:var(--card2); border:1px solid var(--border); border-radius:12px; margin-top:10px;
+  }
+  .tier-row .info{flex:1;}
+  .tier-name{font-weight:600; font-size:.95rem;}
+  .tier-price{color:var(--accent2); font-size:.9rem;}
+  .tier-seats{color:var(--muted); font-size:.75rem; margin-top:2px;}
+  .tier-row input{width:64px; text-align:center; padding:8px;}
+  .tier-row.sold-out{opacity:.4;}
+  .tier-row.sold-out .tier-seats{color:var(--danger);}
+
+  .btn{
+    width:100%; padding:13px; border:0; border-radius:12px; font-size:1rem; font-weight:600;
+    cursor:pointer; background:linear-gradient(135deg, var(--accent), #8a7cf0); color:#fff;
+    margin-top:18px; transition:transform .1s, opacity .15s;
+  }
+  .btn:hover{opacity:.92;}
+  .btn:active{transform:scale(.98);}
+  .btn.ghost{background:var(--card2); border:1px solid var(--border); color:var(--text);}
+
+  table{width:100%; border-collapse:collapse; margin-top:6px;}
+  td, th{padding:8px 4px; border-bottom:1px solid var(--border); text-align:left; font-size:.88rem;}
+  th{color:var(--muted); font-weight:500;}
+  .total-row td{font-weight:700; font-size:1.05rem; border-top:2px solid var(--accent); border-bottom:none; padding-top:12px;}
+  .neg{color:var(--accent2);}
+
+  .error{
+    background:rgba(255,93,108,.1); border:1px solid var(--danger); color:var(--danger);
+    padding:12px 14px; border-radius:10px; margin-top:14px; font-size:.9rem;
+  }
+
+  .checkbox-row{display:flex; align-items:center; gap:8px; margin-top:14px;}
+  .checkbox-row input{width:auto;}
+  .checkbox-row label{margin:0; color:var(--text); font-size:.9rem;}
+
+  .badge{
+    display:inline-block; background:var(--card2); border:1px solid var(--border);
+    padding:4px 10px; border-radius:20px; font-size:.72rem; color:var(--accent2); margin-left:8px;
+  }
+  .note{font-size:.75rem; color:var(--muted); margin-top:8px;}
+
+  .pay-tabs{display:flex; gap:8px; margin-top:6px;}
+  .pay-tab{
+    flex:1; padding:10px; text-align:center; border-radius:10px; border:1px solid var(--border);
+    background:var(--card2); cursor:pointer; font-size:.85rem; color:var(--muted); transition:.15s;
+  }
+  .pay-tab.active{border-color:var(--accent); color:var(--text); background:rgba(108,92,231,.12);}
+  .pay-panel{margin-top:14px;}
+  .pay-panel.hidden{display:none;}
+  .upi-apps{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .upi-app{
+    padding:8px 14px; border-radius:10px; background:var(--card2); border:1px solid var(--border);
+    font-size:.82rem; cursor:pointer; color:var(--text);
+  }
+  .upi-app.active{border-color:var(--accent2); color:var(--accent2);}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  .success{
+    background:rgba(0,210,168,.1); border:1px solid var(--accent2); border-radius:12px;
+    padding:18px; margin-top:16px; text-align:center;
+  }
+  .success .check{font-size:2.2rem;}
+  .success .amount{font-size:1.4rem; font-weight:700; margin:6px 0;}
+  .success .bid{color:var(--muted); font-size:.85rem;}
+
+  #login{max-width:400px; margin:80px auto 0;}
+  #app{display:none;}
 </style>
 </head>
 <body>
+<div class="wrap">
 
-  <!-- ===== MOCK LOGIN (demo only, no real auth) ===== -->
+  <div class="brand">
+    <div class="logo">🎬</div>
+    <div><h1>CineHub</h1><span>Friday Night at the Multiplex</span></div>
+  </div>
+
+  <!-- ===== MOCK LOGIN ===== -->
   <div id="login" class="card">
-    <h1>🎬 Multiplex Booking Counter</h1>
-    <p class="note">Demo login — no password check, no account storage. For hackathon demo purposes only.</p>
+    <h2>Sign in to book</h2>
+    <p class="note">Demo login only — no password, no account storage.</p>
     <label>Your name</label>
     <input id="loginName" placeholder="e.g. Pranjal">
     <div class="checkbox-row">
       <input type="checkbox" id="loginMember">
-      <label style="margin:0">I'm a member</label>
+      <label>I'm a member</label>
     </div>
-    <button onclick="login()">Continue</button>
+    <button class="btn" onclick="login()">Continue</button>
   </div>
 
   <!-- ===== MAIN APP ===== -->
   <div id="app">
-    <h1>🎬 Multiplex Booking Counter <span class="badge" id="whoami"></span></h1>
+    <div class="card">
+      <h2>Select show <span class="badge" id="whoami"></span></h2>
+      <select id="show"></select>
+      <div id="tiers" class="show-grid"></div>
 
-    <label>Show</label>
-    <select id="show"></select>
+      <label>Offer code (optional)</label>
+      <input id="offer" placeholder="e.g. FESTIVE50">
+      <div class="checkbox-row">
+        <input type="checkbox" id="memberToggle">
+        <label>Apply member discount</label>
+      </div>
 
-    <div id="tiers"></div>
+      <button class="btn" onclick="getQuote()">Get Quote</button>
+      <div id="result"></div>
+    </div>
 
-    <label>Offer code (optional)</label>
-    <input id="offer" placeholder="e.g. FESTIVE50">
-
-    <button onclick="getQuote()">Get Quote</button>
-
-    <div id="result"></div>
     <div id="payment"></div>
   </div>
 
+</div>
+
 <script>
-let currentShow = null;
 let user = null;
+let currentShow = null;
 let lastQuoteRequestBody = null;
+let selectedMethod = 'card';
+let selectedUpiApp = 'gpay';
 
 function login() {
   const name = document.getElementById('loginName').value.trim();
@@ -71,8 +167,8 @@ function login() {
   user = { name, isMember: document.getElementById('loginMember').checked };
   document.getElementById('login').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  document.getElementById('whoami').textContent =
-    user.name + (user.isMember ? ' · member' : '');
+  document.getElementById('whoami').textContent = user.name + (user.isMember ? ' · member' : '');
+  document.getElementById('memberToggle').checked = user.isMember;
   loadShows();
 }
 
@@ -80,20 +176,23 @@ async function loadShows() {
   const res = await fetch('/shows');
   const shows = await res.json();
   const sel = document.getElementById('show');
-  sel.innerHTML = shows.map(s => `<option value="${s.id}">${s.movie} — ${s.starts_at}</option>`).join('');
+  sel.innerHTML = shows.map(s => `<option value="${s.id}">${s.movie} — ${new Date(s.starts_at).toLocaleString()}</option>`).join('');
   sel.onchange = () => renderTiers(shows.find(s => s.id === sel.value));
-  currentShow = shows[0];
-  renderTiers(currentShow);
+  renderTiers(shows[0]);
 }
 
 function renderTiers(show) {
   currentShow = show;
-  const div = document.getElementById('tiers');
-  div.innerHTML = show.tiers.map(t => `
-    <div class="tier-row">
-      <span>${t.name} — ₹${(t.price_paisa/100).toFixed(2)} ${t.bookable ? `(${t.seats_available} left)` : '(sold out)'}</span>
+  document.getElementById('tiers').innerHTML = show.tiers.map(t => `
+    <div class="tier-row ${t.bookable ? '' : 'sold-out'}">
+      <div class="info">
+        <div class="tier-name">${t.name}</div>
+        <div class="tier-price">₹${(t.price_paisa/100).toFixed(2)}</div>
+        <div class="tier-seats">${t.bookable ? t.seats_available + ' seats left' : 'Sold out'}</div>
+      </div>
       <input type="number" min="0" value="0" data-tier="${t.code}" ${t.bookable ? '' : 'disabled'}>
     </div>`).join('');
+  document.getElementById('result').innerHTML = '';
   document.getElementById('payment').innerHTML = '';
 }
 
@@ -106,66 +205,134 @@ async function getQuote() {
     show_id: document.getElementById('show').value,
     items,
     offer_code: document.getElementById('offer').value || null,
-    is_member: user.isMember
+    is_member: document.getElementById('memberToggle').checked
   };
   lastQuoteRequestBody = body;
 
   const res = await fetch('/quote', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
   });
   const data = await res.json();
   const result = document.getElementById('result');
   const payment = document.getElementById('payment');
 
   if (!res.ok) {
-    result.innerHTML = `<div class="error">${data.message || 'Could not price this booking.'}</div>`;
+    result.innerHTML = `<div class="error">⚠️ ${data.message || 'Could not price this booking.'}</div>`;
     payment.innerHTML = '';
     return;
   }
 
   result.innerHTML = `
     <table>
-      <tr><th>Line</th><th>Qty</th><th>Amount</th></tr>
-      ${data.breakup.map(b => `<tr><td>${b.label}</td><td></td><td>${b.amount}</td></tr>`).join('')}
-      <tr class="total-row"><td>Total payable</td><td></td><td>${data.totals.payable}</td></tr>
+      <tr><th>Line</th><th style="text-align:right">Amount</th></tr>
+      ${data.breakup.map(b => `<tr><td>${b.label}</td><td style="text-align:right" class="${b.paisa<0?'neg':''}">${b.amount}</td></tr>`).join('')}
+      <tr class="total-row"><td>Total payable</td><td style="text-align:right">${data.totals.payable}</td></tr>
     </table>`;
 
-  payment.innerHTML = `
+  renderPaymentCard(data.totals.payable);
+}
+
+function renderPaymentCard(amountLabel) {
+  document.getElementById('payment').innerHTML = `
     <div class="card">
-      <p class="note">Demo payment — simulated only, no real card processing or gateway.</p>
-      <label>Card number (any digits)</label>
-      <input id="cardNum" placeholder="4242 4242 4242 4242">
-      <button onclick="pay('${data.totals.payable}')">Pay ${data.totals.payable}</button>
+      <h2>Choose payment method</h2>
+      <div class="pay-tabs">
+        <div class="pay-tab active" data-m="card" onclick="setMethod('card')">💳 Card</div>
+        <div class="pay-tab" data-m="upi" onclick="setMethod('upi')">📱 UPI</div>
+        <div class="pay-tab" data-m="netbanking" onclick="setMethod('netbanking')">🏦 Net Banking</div>
+        <div class="pay-tab" data-m="wallet" onclick="setMethod('wallet')">👛 Wallet</div>
+      </div>
+
+      <div class="pay-panel" id="panel-card">
+        <div class="row2">
+          <div><label>Card number</label><input id="cardNum" placeholder="4242 4242 4242 4242"></div>
+          <div><label>Name on card</label><input id="cardName" placeholder="${user ? user.name : ''}"></div>
+        </div>
+        <div class="row2">
+          <div><label>Expiry</label><input id="cardExp" placeholder="MM/YY"></div>
+          <div><label>CVV</label><input id="cardCvv" placeholder="123" maxlength="3"></div>
+        </div>
+      </div>
+
+      <div class="pay-panel hidden" id="panel-upi">
+        <label>UPI ID</label>
+        <input id="upiId" placeholder="yourname@upi">
+        <div class="upi-apps">
+          <div class="upi-app active" data-a="gpay" onclick="setUpiApp('gpay')">Google Pay</div>
+          <div class="upi-app" data-a="phonepe" onclick="setUpiApp('phonepe')">PhonePe</div>
+          <div class="upi-app" data-a="paytm" onclick="setUpiApp('paytm')">Paytm</div>
+        </div>
+      </div>
+
+      <div class="pay-panel hidden" id="panel-netbanking">
+        <label>Select bank</label>
+        <select id="bankSelect">
+          <option>SBI</option><option>HDFC Bank</option><option>ICICI Bank</option>
+          <option>Axis Bank</option><option>Kotak Mahindra</option>
+        </select>
+      </div>
+
+      <div class="pay-panel hidden" id="panel-wallet">
+        <label>Select wallet</label>
+        <select id="walletSelect">
+          <option>Paytm Wallet</option><option>Amazon Pay</option><option>Mobikwik</option>
+        </select>
+      </div>
+
+      <p class="note">Demo payment — simulated only. No real card, UPI, bank, or wallet transaction occurs.</p>
+      <button class="btn" onclick="pay('${amountLabel}')">Pay ${amountLabel}</button>
     </div>`;
 }
 
+function setMethod(m) {
+  selectedMethod = m;
+  document.querySelectorAll('.pay-tab').forEach(t => t.classList.toggle('active', t.dataset.m === m));
+  document.querySelectorAll('.pay-panel').forEach(p => p.classList.toggle('hidden', p.id !== 'panel-' + m));
+}
+function setUpiApp(a) {
+  selectedUpiApp = a;
+  document.querySelectorAll('.upi-app').forEach(el => el.classList.toggle('active', el.dataset.a === a));
+}
+
+function validatePayment() {
+  if (selectedMethod === 'card') {
+    const num = document.getElementById('cardNum').value.trim();
+    const exp = document.getElementById('cardExp').value.trim();
+    const cvv = document.getElementById('cardCvv').value.trim();
+    if (!num || !exp || !cvv) return 'Fill in card number, expiry and CVV.';
+  } else if (selectedMethod === 'upi') {
+    const id = document.getElementById('upiId').value.trim();
+    if (!id.includes('@')) return 'Enter a UPI ID like name@upi.';
+  }
+  return null;
+}
+
 async function pay(amountLabel) {
-  const card = document.getElementById('cardNum').value.trim();
-  if (!card) { alert('Enter any digits to simulate a card.'); return; }
+  const err = validatePayment();
+  if (err) { alert(err); return; }
 
   const res = await fetch('/book', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(lastQuoteRequestBody)
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lastQuoteRequestBody)
   });
   const data = await res.json();
   const payment = document.getElementById('payment');
 
   if (!res.ok) {
-    payment.innerHTML = `<div class="error">${data.message || 'Booking failed.'}</div>`;
+    payment.innerHTML = `<div class="error">⚠️ ${data.message || 'Booking failed.'}</div>`;
     return;
   }
 
+  const methodLabel = {card:'Card', upi:'UPI ('+selectedUpiApp+')', netbanking:'Net Banking', wallet:'Wallet'}[selectedMethod];
   payment.innerHTML = `
     <div class="card">
-      ✅ <strong>Payment simulated — booking confirmed.</strong><br>
-      Booking ID: ${data.booking_id}<br>
-      Amount charged: ${data.totals.payable}
-      <p class="note">This is a simulated charge for demo purposes only.</p>
+      <div class="success">
+        <div class="check">✅</div>
+        <div class="amount">${data.totals.payable} paid via ${methodLabel}</div>
+        <div class="bid">Booking ID: ${data.booking_id}</div>
+        <p class="note">Simulated payment — no real transaction was processed.</p>
+      </div>
+      <button class="btn ghost" onclick="loadShows(); document.getElementById('payment').innerHTML=''; document.getElementById('result').innerHTML='';">Book another show</button>
     </div>`;
-  loadShows(); // refresh seat counts
 }
 </script>
 </body>
