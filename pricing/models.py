@@ -64,6 +64,8 @@ class Show:
     tiers: dict = field(default_factory=dict)
     max_tickets_per_booking: int = 10
     tax: TaxPolicy = field(default_factory=TaxPolicy)
+    city: str = ""
+    cinema: str = ""
 
     @classmethod
     def from_dict(cls, d):
@@ -76,6 +78,8 @@ class Show:
             tiers={t["code"].upper(): Tier.from_dict(t) for t in d["tiers"]},
             max_tickets_per_booking=int(d.get("max_tickets_per_booking", 10)),
             tax=TaxPolicy(**d["tax"]) if "tax" in d else TaxPolicy(),
+            city=d.get("city", ""),
+            cinema=d.get("cinema", ""),
         )
 
 

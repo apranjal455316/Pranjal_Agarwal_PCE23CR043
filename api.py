@@ -43,7 +43,8 @@ def _load(req):
 
 @app.get("/shows")
 def list_shows():
-    return [{"id": s.id, "movie": s.movie, "starts_at": s.starts_at,
+    return [{"id": s.id, "movie": s.movie, "starts_at": s.starts_at, "screen": s.screen,
+             "city": s.city, "cinema": s.cinema,
              "tiers": [{"code": t.code, "name": t.name, "price_paisa": t.price_paisa,
                         "seats_available": t.seats_available, "bookable": t.bookable}
                        for t in s.tiers.values()]} for s in SHOWS.values()]

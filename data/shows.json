@@ -1,97 +1,127 @@
 {
   "shows": [
     {
-      "id": "SHOW-FRI-2100",
+      "id": "DEL-MIDEX-2100",
       "movie": "Midnight Express",
+      "city": "Delhi",
+      "cinema": "CineHub Saket",
       "screen": "Audi 3",
       "starts_at": "2026-09-18T21:00:00+05:30",
-      "convenience_fee_per_ticket": 25,
-      "max_tickets_per_booking": 0,
-      "tiers": [
-        {
-          "code": "SILVER",
-          "name": "Silver",
-          "price": 100,
-          "seats_available": 40
-        },
-        {
-          "code": "GOLD",
-          "name": "Gold",
-          "price": 250,
-          "seats_available": 6
-        },
-        {
-          "code": "RECLINER",
-          "name": "Recliner",
-          "price": 450,
-          "seats_available": 0,
-          "sold_out": true
-        }
-      ]
-    },
-    {
-      "id": "SHOW-SAT-1800",
-      "movie": "Racing Hearts",
-      "screen": "Audi 1",
-      "starts_at": "2026-09-19T18:00:00+05:30",
-      "convenience_fee_per_ticket": 20,
-      "max_tickets_per_booking": 0,
-      "tiers": [
-        {
-          "code": "SILVER",
-          "name": "Silver",
-          "price": 90,
-          "seats_available": 50
-        },
-        {
-          "code": "GOLD",
-          "name": "Gold",
-          "price": 220,
-          "seats_available": 30
-        },
-        {
-          "code": "RECLINER",
-          "name": "Recliner",
-          "price": 400,
-          "seats_available": 10
-        }
-      ]
-    },
-    {
-      "id": "SHOW-SUN-1500",
-      "movie": "The Quiet Storm",
-      "screen": "Audi 2",
-      "starts_at": "2026-09-20T15:00:00+05:30",
       "convenience_fee_per_ticket": 30,
       "max_tickets_per_booking": 0,
       "tiers": [
-        {
-          "code": "SILVER",
-          "name": "Silver",
-          "price": 120,
-          "seats_available": 20
-        },
-        {
-          "code": "GOLD",
-          "name": "Gold",
-          "price": 280,
-          "seats_available": 15
-        },
-        {
-          "code": "RECLINER",
-          "name": "Recliner",
-          "price": 500,
-          "seats_available": 4
-        }
+        {"code": "SILVER", "name": "Silver", "price": 150, "seats_available": 40},
+        {"code": "GOLD", "name": "Gold", "price": 320, "seats_available": 20},
+        {"code": "RECLINER", "name": "Recliner", "price": 550, "seats_available": 8}
+      ]
+    },
+    {
+      "id": "DEL-RACHT-1830",
+      "movie": "Racing Hearts",
+      "city": "Delhi",
+      "cinema": "CineHub Vasant Kunj",
+      "screen": "Audi 1",
+      "starts_at": "2026-09-19T18:30:00+05:30",
+      "convenience_fee_per_ticket": 25,
+      "max_tickets_per_booking": 0,
+      "tiers": [
+        {"code": "SILVER", "name": "Silver", "price": 130, "seats_available": 50},
+        {"code": "GOLD", "name": "Gold", "price": 280, "seats_available": 25},
+        {"code": "RECLINER", "name": "Recliner", "price": 500, "seats_available": 0, "sold_out": true}
+      ]
+    },
+    {
+      "id": "MUM-MIDEX-2200",
+      "movie": "Midnight Express",
+      "city": "Mumbai",
+      "cinema": "CineHub Andheri",
+      "screen": "Audi 5",
+      "starts_at": "2026-09-18T22:00:00+05:30",
+      "convenience_fee_per_ticket": 40,
+      "max_tickets_per_booking": 0,
+      "tiers": [
+        {"code": "SILVER", "name": "Silver", "price": 180, "seats_available": 35},
+        {"code": "GOLD", "name": "Gold", "price": 380, "seats_available": 18},
+        {"code": "RECLINER", "name": "Recliner", "price": 650, "seats_available": 6}
+      ]
+    },
+    {
+      "id": "MUM-QUIET-1500",
+      "movie": "The Quiet Storm",
+      "city": "Mumbai",
+      "cinema": "CineHub Bandra",
+      "screen": "Audi 2",
+      "starts_at": "2026-09-20T15:00:00+05:30",
+      "convenience_fee_per_ticket": 35,
+      "max_tickets_per_booking": 0,
+      "tiers": [
+        {"code": "SILVER", "name": "Silver", "price": 160, "seats_available": 20},
+        {"code": "GOLD", "name": "Gold", "price": 340, "seats_available": 15},
+        {"code": "RECLINER", "name": "Recliner", "price": 600, "seats_available": 4}
+      ]
+    },
+    {
+      "id": "BLR-RACHT-2000",
+      "movie": "Racing Hearts",
+      "city": "Bengaluru",
+      "cinema": "CineHub Indiranagar",
+      "screen": "Audi 4",
+      "starts_at": "2026-09-19T20:00:00+05:30",
+      "convenience_fee_per_ticket": 30,
+      "max_tickets_per_booking": 0,
+      "tiers": [
+        {"code": "SILVER", "name": "Silver", "price": 140, "seats_available": 45},
+        {"code": "GOLD", "name": "Gold", "price": 300, "seats_available": 22},
+        {"code": "RECLINER", "name": "Recliner", "price": 520, "seats_available": 10}
+      ]
+    },
+    {
+      "id": "BLR-QUIET-1730",
+      "movie": "The Quiet Storm",
+      "city": "Bengaluru",
+      "cinema": "CineHub Whitefield",
+      "screen": "Audi 6",
+      "starts_at": "2026-09-20T17:30:00+05:30",
+      "convenience_fee_per_ticket": 28,
+      "max_tickets_per_booking": 0,
+      "tiers": [
+        {"code": "SILVER", "name": "Silver", "price": 120, "seats_available": 30},
+        {"code": "GOLD", "name": "Gold", "price": 260, "seats_available": 20},
+        {"code": "RECLINER", "name": "Recliner", "price": 480, "seats_available": 5}
+      ]
+    },
+    {
+      "id": "JAI-MIDEX-1900",
+      "movie": "Midnight Express",
+      "city": "Jaipur",
+      "cinema": "CineHub Malviya Nagar",
+      "screen": "Audi 1",
+      "starts_at": "2026-09-18T19:00:00+05:30",
+      "convenience_fee_per_ticket": 20,
+      "max_tickets_per_booking": 0,
+      "tiers": [
+        {"code": "SILVER", "name": "Silver", "price": 100, "seats_available": 40},
+        {"code": "GOLD", "name": "Gold", "price": 250, "seats_available": 20},
+        {"code": "RECLINER", "name": "Recliner", "price": 450, "seats_available": 0, "sold_out": true}
+      ]
+    },
+    {
+      "id": "JAI-RACHT-2130",
+      "movie": "Racing Hearts",
+      "city": "Jaipur",
+      "cinema": "CineHub Vaishali Nagar",
+      "screen": "Audi 3",
+      "starts_at": "2026-09-19T21:30:00+05:30",
+      "convenience_fee_per_ticket": 22,
+      "max_tickets_per_booking": 0,
+      "tiers": [
+        {"code": "SILVER", "name": "Silver", "price": 90, "seats_available": 50},
+        {"code": "GOLD", "name": "Gold", "price": 220, "seats_available": 30},
+        {"code": "RECLINER", "name": "Recliner", "price": 400, "seats_available": 10}
       ]
     }
   ],
   "offers": {
-    "FESTIVE50": {
-      "code": "FESTIVE50",
-      "festival_flat": 50,
-      "member_pct": 10,
-      "member_cap": 75
-    }
+    "FESTIVE50": {"code": "FESTIVE50", "festival_flat": 50, "member_pct": 10, "member_cap": 75}
   }
 }

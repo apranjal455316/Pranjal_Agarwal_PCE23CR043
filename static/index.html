@@ -159,6 +159,15 @@
   #posterScreen{display:block;}
   #bookingScreen{display:none;}
 
+
+  .city-chips{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+  .city-chip{
+    padding:8px 16px; border-radius:20px; border:1px solid var(--border); background:var(--card2);
+    color:var(--muted); font-size:.85rem; cursor:pointer; transition:.15s;
+  }
+  .city-chip.active{border-color:var(--accent); color:var(--text); background:rgba(108,92,231,.15);}
+  .poster-cinema{color:var(--muted); font-size:.7rem; margin-top:1px;}
+
   #app{display:none;}
 </style>
 </head>
@@ -209,6 +218,7 @@
     <div id="posterScreen">
       <div class="card">
         <h2>Now Showing <span class="badge" id="whoami"></span></h2>
+        <div id="cityChips" class="city-chips"></div>
         <div id="posterGrid" class="poster-grid"></div>
       </div>
     </div>
@@ -286,18 +296,39 @@ const POSTER_STYLES = [
 ];
 
 let allShows = [];
+let selectedCity = null;
 
 async function loadShows() {
   const res = await fetch('/shows');
   allShows = await res.json();
+  const cities = [...new Set(allShows.map(s => s.city).filter(Boolean))];
+  selectedCity = cities[0] || null;
+  renderCityChips(cities);
   renderPosterGrid();
   document.getElementById('posterScreen').style.display = 'block';
   document.getElementById('bookingScreen').style.display = 'none';
 }
 
+function renderCityChips(cities) {
+  document.getElementById('cityChips').innerHTML = cities.map(c => `
+    <div class="city-chip ${c === selectedCity ? 'active' : ''}" onclick="pickCity('${c}')">📍 ${c}</div>
+  `).join('');
+}
+
+function pickCity(city) {
+  selectedCity = city;
+  document.querySelectorAll('.city-chip').forEach(el => el.classList.toggle('active', el.textContent.includes(city)));
+  renderPosterGrid();
+}
+
 function renderPosterGrid() {
   const grid = document.getElementById('posterGrid');
-  grid.innerHTML = allShows.map((s, i) => {
+  const shows = allShows.filter(s => !selectedCity || s.city === selectedCity);
+  if (shows.length === 0) {
+    grid.innerHTML = `<p class="note">No shows in ${selectedCity} right now.</p>`;
+    return;
+  }
+  grid.innerHTML = shows.map((s, i) => {
     const style = POSTER_STYLES[i % POSTER_STYLES.length];
     const cheapest = Math.min(...s.tiers.map(t => t.price_paisa)) / 100;
     const dt = new Date(s.starts_at);
@@ -309,6 +340,7 @@ function renderPosterGrid() {
         </div>
         <div class="poster-meta">
           <div class="poster-title">${s.movie}</div>
+          <div class="poster-cinema">${s.cinema || ''}</div>
           <div class="poster-sub">${dt.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})} · ${dt.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</div>
           <div class="poster-price">From ₹${cheapest.toFixed(0)}</div>
         </div>
@@ -320,7 +352,8 @@ function chooseMovie(id) {
   document.getElementById('posterScreen').style.display = 'none';
   document.getElementById('bookingScreen').style.display = 'block';
   const sel = document.getElementById('show');
-  sel.innerHTML = allShows.map(s => `<option value="${s.id}" ${s.id===id?'selected':''}>${s.movie} — ${new Date(s.starts_at).toLocaleString()}</option>`).join('');
+  const sameCity = allShows.filter(s => s.city === selectedCity);
+  sel.innerHTML = sameCity.map(s => `<option value="${s.id}" ${s.id===id?'selected':''}>${s.movie} — ${s.cinema} — ${new Date(s.starts_at).toLocaleString()}</option>`).join('');
   sel.onchange = () => { const sh = allShows.find(s => s.id === sel.value); document.getElementById('bookingTitle').textContent = sh.movie; renderTiers(sh); };
   const show = allShows.find(s => s.id === id);
   document.getElementById('bookingTitle').textContent = show.movie;
