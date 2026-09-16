@@ -130,6 +130,35 @@
   .legend{display:flex; gap:16px; margin-top:14px; font-size:.78rem; color:var(--muted);}
   .legend .dot{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px;}
 
+
+  .poster-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:14px; margin-top:4px;}
+  .poster-card{
+    cursor:pointer; border-radius:14px; overflow:hidden; border:1px solid var(--border);
+    background:var(--card2); transition:transform .15s, border-color .15s; position:relative;
+  }
+  .poster-card:hover{transform:translateY(-3px); border-color:var(--accent);}
+  .poster-card.active{border-color:var(--accent2); box-shadow:0 0 0 2px rgba(0,210,168,.3);}
+  .poster-art{
+    height:190px; display:flex; align-items:center; justify-content:center; font-size:3rem;
+    position:relative; overflow:hidden;
+  }
+  .poster-art::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(180deg, transparent 40%, rgba(0,0,0,.55));
+  }
+  .poster-badge{
+    position:absolute; top:8px; left:8px; z-index:1; background:rgba(0,0,0,.5); backdrop-filter:blur(2px);
+    padding:3px 8px; border-radius:8px; font-size:.65rem; color:var(--accent2); border:1px solid rgba(0,210,168,.4);
+  }
+  .poster-meta{padding:10px 12px;}
+  .poster-title{font-weight:600; font-size:.88rem; line-height:1.25;}
+  .poster-sub{color:var(--muted); font-size:.72rem; margin-top:3px;}
+  .poster-price{color:var(--accent2); font-size:.75rem; margin-top:6px;}
+  .back-link{color:var(--muted); font-size:.85rem; cursor:pointer; display:inline-block; margin-bottom:14px;}
+  .back-link:hover{color:var(--text);}
+  #posterScreen{display:block;}
+  #bookingScreen{display:none;}
+
   #app{display:none;}
 </style>
 </head>
@@ -156,9 +185,21 @@
 
   <!-- ===== MAIN APP ===== -->
   <div id="app">
-    <div class="card">
-      <h2>Select show <span class="badge" id="whoami"></span></h2>
-      <select id="show"></select>
+
+    <!-- Poster browse screen -->
+    <div id="posterScreen">
+      <div class="card">
+        <h2>Now Showing <span class="badge" id="whoami"></span></h2>
+        <div id="posterGrid" class="poster-grid"></div>
+      </div>
+    </div>
+
+    <!-- Booking screen (shown after picking a movie) -->
+    <div id="bookingScreen">
+      <span class="back-link" onclick="backToPosters()">← Back to Now Showing</span>
+      <div class="card">
+        <h2 id="bookingTitle">Select show</h2>
+        <select id="show"></select>
       <div class="screen-curve"></div><div class="screen-label">SCREEN THIS WAY</div><div id="tiers" class="seat-map"></div><div class="legend"><span><span class="dot" style="background:var(--card2);border:1px solid var(--border)"></span>Available</span><span><span class="dot" style="background:var(--accent)"></span>Selected</span><span><span class="dot" style="background:#2a2f3d"></span>Taken</span></div>
 
       <label>Offer code (optional)</label>
@@ -170,9 +211,10 @@
 
       <button class="btn" onclick="getQuote()">Get Quote</button>
       <div id="result"></div>
-    </div>
+      </div>
 
-    <div id="payment"></div>
+      <div id="payment"></div>
+    </div>
   </div>
 
 </div>
@@ -195,13 +237,59 @@ function login() {
   loadShows();
 }
 
+const POSTER_STYLES = [
+  { grad:'linear-gradient(135deg,#6c5ce7,#341f97)', emoji:'🎬' },
+  { grad:'linear-gradient(135deg,#00d2a8,#0b8457)', emoji:'🏎️' },
+  { grad:'linear-gradient(135deg,#ff5d6c,#7d1935)', emoji:'🌩️' },
+  { grad:'linear-gradient(135deg,#ffb020,#a85700)', emoji:'🎭' },
+  { grad:'linear-gradient(135deg,#3742fa,#1e2761)', emoji:'🕵️' },
+];
+
+let allShows = [];
+
 async function loadShows() {
   const res = await fetch('/shows');
-  const shows = await res.json();
+  allShows = await res.json();
+  renderPosterGrid();
+  document.getElementById('posterScreen').style.display = 'block';
+  document.getElementById('bookingScreen').style.display = 'none';
+}
+
+function renderPosterGrid() {
+  const grid = document.getElementById('posterGrid');
+  grid.innerHTML = allShows.map((s, i) => {
+    const style = POSTER_STYLES[i % POSTER_STYLES.length];
+    const cheapest = Math.min(...s.tiers.map(t => t.price_paisa)) / 100;
+    const dt = new Date(s.starts_at);
+    return `
+      <div class="poster-card" data-id="${s.id}" onclick="chooseMovie('${s.id}')">
+        <div class="poster-art" style="background:${style.grad}">
+          <span class="poster-badge">${s.screen || ''}</span>
+          ${style.emoji}
+        </div>
+        <div class="poster-meta">
+          <div class="poster-title">${s.movie}</div>
+          <div class="poster-sub">${dt.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})} · ${dt.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="poster-price">From ₹${cheapest.toFixed(0)}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function chooseMovie(id) {
+  document.getElementById('posterScreen').style.display = 'none';
+  document.getElementById('bookingScreen').style.display = 'block';
   const sel = document.getElementById('show');
-  sel.innerHTML = shows.map(s => `<option value="${s.id}">${s.movie} — ${new Date(s.starts_at).toLocaleString()}</option>`).join('');
-  sel.onchange = () => renderTiers(shows.find(s => s.id === sel.value));
-  renderTiers(shows[0]);
+  sel.innerHTML = allShows.map(s => `<option value="${s.id}" ${s.id===id?'selected':''}>${s.movie} — ${new Date(s.starts_at).toLocaleString()}</option>`).join('');
+  sel.onchange = () => { const sh = allShows.find(s => s.id === sel.value); document.getElementById('bookingTitle').textContent = sh.movie; renderTiers(sh); };
+  const show = allShows.find(s => s.id === id);
+  document.getElementById('bookingTitle').textContent = show.movie;
+  renderTiers(show);
+}
+
+function backToPosters() {
+  document.getElementById('posterScreen').style.display = 'block';
+  document.getElementById('bookingScreen').style.display = 'none';
 }
 
 let selectedSeats = {}; // tier -> Set of seat labels

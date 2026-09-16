@@ -1887,3 +1887,561 @@ git add -A
 git commit -m "Fix test assertion: last-valid-price-wins is correct behavior for Recliner dedup"
 git push
 And add this fix to AI_LOGS.md along with the rest before final submission.
+
+PLEASE HELP ME TO ADD MULTIPLE MOVIE SHOWS IN MY WEBSITE AND ALSO ADD A LOGIN PAGE AND PAYMENT OPTIONS
+
+Let's give it a proper visual upgrade and multiple payment method tabs. Still simulated (no real gateway) — just a nicer, more realistic-feeling UI.
+
+bash
+cat > static/index.html <<'HTMLEOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CineHub — Book Your Show</title>
+<style>
+  :root{
+    --bg:#0b0d14; --card:#141826; --card2:#1b2032; --border:#2a3146;
+    --text:#f2f4f8; --muted:#8b93a7; --accent:#6c5ce7; --accent2:#00d2a8;
+    --danger:#ff5d6c; --gold:#ffb020;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:'Segoe UI',system-ui,sans-serif; margin:0; min-height:100vh;
+    background:radial-gradient(1200px 600px at 50% -10%, #1c2138, var(--bg));
+    color:var(--text);
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:32px 18px 60px;}
+  .brand{display:flex; align-items:center; gap:10px; margin-bottom:26px;}
+  .brand .logo{
+    width:38px; height:38px; border-radius:10px;
+    background:linear-gradient(135deg, var(--accent), var(--accent2));
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+  }
+  .brand h1{font-size:1.3rem; margin:0;}
+  .brand span{color:var(--muted); font-size:.8rem;}
+
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:22px; margin-bottom:18px; box-shadow:0 8px 24px rgba(0,0,0,.25);
+  }
+  h2{font-size:1rem; margin:0 0 14px; color:var(--text);}
+  label{display:block; font-size:.8rem; color:var(--muted); margin-top:14px; margin-bottom:6px;}
+  select, input{
+    width:100%; padding:11px 12px; background:var(--card2); color:var(--text);
+    border:1px solid var(--border); border-radius:10px; font-size:.95rem; outline:none;
+    transition:border-color .15s;
+  }
+  select:focus, input:focus{border-color:var(--accent);}
+
+  .show-grid{display:grid; grid-template-columns:1fr; gap:10px;}
+  .tier-row{
+    display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:var(--card2); border:1px solid var(--border); border-radius:12px; margin-top:10px;
+  }
+  .tier-row .info{flex:1;}
+  .tier-name{font-weight:600; font-size:.95rem;}
+  .tier-price{color:var(--accent2); font-size:.9rem;}
+  .tier-seats{color:var(--muted); font-size:.75rem; margin-top:2px;}
+  .tier-row input{width:64px; text-align:center; padding:8px;}
+  .tier-row.sold-out{opacity:.4;}
+  .tier-row.sold-out .tier-seats{color:var(--danger);}
+
+  .btn{
+    width:100%; padding:13px; border:0; border-radius:12px; font-size:1rem; font-weight:600;
+    cursor:pointer; background:linear-gradient(135deg, var(--accent), #8a7cf0); color:#fff;
+    margin-top:18px; transition:transform .1s, opacity .15s;
+  }
+  .btn:hover{opacity:.92;}
+  .btn:active{transform:scale(.98);}
+  .btn.ghost{background:var(--card2); border:1px solid var(--border); color:var(--text);}
+
+  table{width:100%; border-collapse:collapse; margin-top:6px;}
+  td, th{padding:8px 4px; border-bottom:1px solid var(--border); text-align:left; font-size:.88rem;}
+  th{color:var(--muted); font-weight:500;}
+  .total-row td{font-weight:700; font-size:1.05rem; border-top:2px solid var(--accent); border-bottom:none; padding-top:12px;}
+  .neg{color:var(--accent2);}
+
+  .error{
+    background:rgba(255,93,108,.1); border:1px solid var(--danger); color:var(--danger);
+    padding:12px 14px; border-radius:10px; margin-top:14px; font-size:.9rem;
+  }
+
+  .checkbox-row{display:flex; align-items:center; gap:8px; margin-top:14px;}
+  .checkbox-row input{width:auto;}
+  .checkbox-row label{margin:0; color:var(--text); font-size:.9rem;}
+
+  .badge{
+    display:inline-block; background:var(--card2); border:1px solid var(--border);
+    padding:4px 10px; border-radius:20px; font-size:.72rem; color:var(--accent2); margin-left:8px;
+  }
+  .note{font-size:.75rem; color:var(--muted); margin-top:8px;}
+
+  .pay-tabs{display:flex; gap:8px; margin-top:6px;}
+  .pay-tab{
+    flex:1; padding:10px; text-align:center; border-radius:10px; border:1px solid var(--border);
+    background:var(--card2); cursor:pointer; font-size:.85rem; color:var(--muted); transition:.15s;
+  }
+  .pay-tab.active{border-color:var(--accent); color:var(--text); background:rgba(108,92,231,.12);}
+  .pay-panel{margin-top:14px;}
+  .pay-panel.hidden{display:none;}
+  .upi-apps{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .upi-app{
+    padding:8px 14px; border-radius:10px; background:var(--card2); border:1px solid var(--border);
+    font-size:.82rem; cursor:pointer; color:var(--text);
+  }
+  .upi-app.active{border-color:var(--accent2); color:var(--accent2);}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  .success{
+    background:rgba(0,210,168,.1); border:1px solid var(--accent2); border-radius:12px;
+    padding:18px; margin-top:16px; text-align:center;
+  }
+  .success .check{font-size:2.2rem;}
+  .success .amount{font-size:1.4rem; font-weight:700; margin:6px 0;}
+  .success .bid{color:var(--muted); font-size:.85rem;}
+
+  #login{max-width:400px; margin:80px auto 0;}
+  #app{display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div class="logo">🎬</div>
+    <div><h1>CineHub</h1><span>Friday Night at the Multiplex</span></div>
+  </div>
+
+  <!-- ===== MOCK LOGIN ===== -->
+  <div id="login" class="card">
+    <h2>Sign in to book</h2>
+    <p class="note">Demo login only — no password, no account storage.</p>
+    <label>Your name</label>
+    <input id="loginName" placeholder="e.g. Pranjal">
+    <div class="checkbox-row">
+      <input type="checkbox" id="loginMember">
+      <label>I'm a member</label>
+    </div>
+    <button class="btn" onclick="login()">Continue</button>
+  </div>
+
+  <!-- ===== MAIN APP ===== -->
+  <div id="app">
+    <div class="card">
+      <h2>Select show <span class="badge" id="whoami"></span></h2>
+      <select id="show"></select>
+      <div id="tiers" class="show-grid"></div>
+
+      <label>Offer code (optional)</label>
+      <input id="offer" placeholder="e.g. FESTIVE50">
+      <div class="checkbox-row">
+        <input type="checkbox" id="memberToggle">
+        <label>Apply member discount</label>
+      </div>
+
+      <button class="btn" onclick="getQuote()">Get Quote</button>
+      <div id="result"></div>
+    </div>
+
+    <div id="payment"></div>
+  </div>
+
+</div>
+
+<script>
+let user = null;
+let currentShow = null;
+let lastQuoteRequestBody = null;
+let selectedMethod = 'card';
+let selectedUpiApp = 'gpay';
+
+function login() {
+  const name = document.getElementById('loginName').value.trim();
+  if (!name) { alert('Enter a name to continue.'); return; }
+  user = { name, isMember: document.getElementById('loginMember').checked };
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('whoami').textContent = user.name + (user.isMember ? ' · member' : '');
+  document.getElementById('memberToggle').checked = user.isMember;
+  loadShows();
+}
+
+async function loadShows() {
+  const res = await fetch('/shows');
+  const shows = await res.json();
+  const sel = document.getElementById('show');
+  sel.innerHTML = shows.map(s => `<option value="${s.id}">${s.movie} — ${new Date(s.starts_at).toLocaleString()}</option>`).join('');
+  sel.onchange = () => renderTiers(shows.find(s => s.id === sel.value));
+  renderTiers(shows[0]);
+}
+
+function renderTiers(show) {
+  currentShow = show;
+  document.getElementById('tiers').innerHTML = show.tiers.map(t => `
+    <div class="tier-row ${t.bookable ? '' : 'sold-out'}">
+      <div class="info">
+        <div class="tier-name">${t.name}</div>
+        <div class="tier-price">₹${(t.price_paisa/100).toFixed(2)}</div>
+        <div class="tier-seats">${t.bookable ? t.seats_available + ' seats left' : 'Sold out'}</div>
+      </div>
+      <input type="number" min="0" value="0" data-tier="${t.code}" ${t.bookable ? '' : 'disabled'}>
+    </div>`).join('');
+  document.getElementById('result').innerHTML = '';
+  document.getElementById('payment').innerHTML = '';
+}
+
+async function getQuote() {
+  const items = [...document.querySelectorAll('#tiers input')]
+    .map(i => ({ tier: i.dataset.tier, qty: parseInt(i.value || '0', 10) }))
+    .filter(i => i.qty > 0);
+
+  const body = {
+    show_id: document.getElementById('show').value,
+    items,
+    offer_code: document.getElementById('offer').value || null,
+    is_member: document.getElementById('memberToggle').checked
+  };
+  lastQuoteRequestBody = body;
+
+  const res = await fetch('/quote', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  const result = document.getElementById('result');
+  const payment = document.getElementById('payment');
+
+  if (!res.ok) {
+    result.innerHTML = `<div class="error">⚠️ ${data.message || 'Could not price this booking.'}</div>`;
+    payment.innerHTML = '';
+    return;
+  }
+
+  result.innerHTML = `
+    <table>
+      <tr><th>Line</th><th style="text-align:right">Amount</th></tr>
+      ${data.breakup.map(b => `<tr><td>${b.label}</td><td style="text-align:right" class="${b.paisa<0?'neg':''}">${b.amount}</td></tr>`).join('')}
+      <tr class="total-row"><td>Total payable</td><td style="text-align:right">${data.totals.payable}</td></tr>
+    </table>`;
+
+  renderPaymentCard(data.totals.payable);
+}
+
+function renderPaymentCard(amountLabel) {
+  document.getElementById('payment').innerHTML = `
+    <div class="card">
+      <h2>Choose payment method</h2>
+      <div class="pay-tabs">
+        <div class="pay-tab active" data-m="card" onclick="setMethod('card')">💳 Card</div>
+        <div class="pay-tab" data-m="upi" onclick="setMethod('upi')">📱 UPI</div>
+        <div class="pay-tab" data-m="netbanking" onclick="setMethod('netbanking')">🏦 Net Banking</div>
+        <div class="pay-tab" data-m="wallet" onclick="setMethod('wallet')">👛 Wallet</div>
+      </div>
+
+      <div class="pay-panel" id="panel-card">
+        <div class="row2">
+          <div><label>Card number</label><input id="cardNum" placeholder="4242 4242 4242 4242"></div>
+          <div><label>Name on card</label><input id="cardName" placeholder="${user ? user.name : ''}"></div>
+        </div>
+        <div class="row2">
+          <div><label>Expiry</label><input id="cardExp" placeholder="MM/YY"></div>
+          <div><label>CVV</label><input id="cardCvv" placeholder="123" maxlength="3"></div>
+        </div>
+      </div>
+
+      <div class="pay-panel hidden" id="panel-upi">
+        <label>UPI ID</label>
+        <input id="upiId" placeholder="yourname@upi">
+        <div class="upi-apps">
+          <div class="upi-app active" data-a="gpay" onclick="setUpiApp('gpay')">Google Pay</div>
+          <div class="upi-app" data-a="phonepe" onclick="setUpiApp('phonepe')">PhonePe</div>
+          <div class="upi-app" data-a="paytm" onclick="setUpiApp('paytm')">Paytm</div>
+        </div>
+      </div>
+
+      <div class="pay-panel hidden" id="panel-netbanking">
+        <label>Select bank</label>
+        <select id="bankSelect">
+          <option>SBI</option><option>HDFC Bank</option><option>ICICI Bank</option>
+          <option>Axis Bank</option><option>Kotak Mahindra</option>
+        </select>
+      </div>
+
+      <div class="pay-panel hidden" id="panel-wallet">
+        <label>Select wallet</label>
+        <select id="walletSelect">
+          <option>Paytm Wallet</option><option>Amazon Pay</option><option>Mobikwik</option>
+        </select>
+      </div>
+
+      <p class="note">Demo payment — simulated only. No real card, UPI, bank, or wallet transaction occurs.</p>
+      <button class="btn" onclick="pay('${amountLabel}')">Pay ${amountLabel}</button>
+    </div>`;
+}
+
+function setMethod(m) {
+  selectedMethod = m;
+  document.querySelectorAll('.pay-tab').forEach(t => t.classList.toggle('active', t.dataset.m === m));
+  document.querySelectorAll('.pay-panel').forEach(p => p.classList.toggle('hidden', p.id !== 'panel-' + m));
+}
+function setUpiApp(a) {
+  selectedUpiApp = a;
+  document.querySelectorAll('.upi-app').forEach(el => el.classList.toggle('active', el.dataset.a === a));
+}
+
+function validatePayment() {
+  if (selectedMethod === 'card') {
+    const num = document.getElementById('cardNum').value.trim();
+    const exp = document.getElementById('cardExp').value.trim();
+    const cvv = document.getElementById('cardCvv').value.trim();
+    if (!num || !exp || !cvv) return 'Fill in card number, expiry and CVV.';
+  } else if (selectedMethod === 'upi') {
+    const id = document.getElementById('upiId').value.trim();
+    if (!id.includes('@')) return 'Enter a UPI ID like name@upi.';
+  }
+  return null;
+}
+
+async function pay(amountLabel) {
+  const err = validatePayment();
+  if (err) { alert(err); return; }
+
+  const res = await fetch('/book', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lastQuoteRequestBody)
+  });
+  const data = await res.json();
+  const payment = document.getElementById('payment');
+
+  if (!res.ok) {
+    payment.innerHTML = `<div class="error">⚠️ ${data.message || 'Booking failed.'}</div>`;
+    return;
+  }
+
+  const methodLabel = {card:'Card', upi:'UPI ('+selectedUpiApp+')', netbanking:'Net Banking', wallet:'Wallet'}[selectedMethod];
+  payment.innerHTML = `
+    <div class="card">
+      <div class="success">
+        <div class="check">✅</div>
+        <div class="amount">${data.totals.payable} paid via ${methodLabel}</div>
+        <div class="bid">Booking ID: ${data.booking_id}</div>
+        <p class="note">Simulated payment — no real transaction was processed.</p>
+      </div>
+      <button class="btn ghost" onclick="loadShows(); document.getElementById('payment').innerHTML=''; document.getElementById('result').innerHTML='';">Book another show</button>
+    </div>`;
+}
+</script>
+</body>
+</html>
+HTMLEOF
+Push it:
+
+bash
+git add -A
+git commit -m "Redesign frontend UI, add card/UPI/netbanking/wallet payment tabs"
+git push
+Reload /static/index.html — dark themed booking counter, seat tiers as cards, a proper quote table, and a payment step with tabs for Card / UPI / Net Banking / Wallet, each with its own fields. All simulated on top of your real /quote and /book endpoints — no actual payment processing.
+
+One more nudge on the same point as before: this is well beyond what the assignment asked for. Before you run out of time, make sure the actual graded parts — the pricing engine, the Twist import, tests, README, REASONING, AI_LOGS — are solid and pushed. Want me to do a quick checklist pass to confirm nothing's missing there?
+
+ADD SEAT LAYOUT PLAN SO THAT CUSTOMER CAN CHOOSE SEATS BY THEIR OWN AND BOOK THAT SEAT AND REMOVE LIMIT OF 6 TICKETS
+
+Designing a seat layout mapped to pricing tiers.
+Designing a seat layout mapped to pricing tiers.
+One more scope note, then I'll build it: true seat-level booking (each seat individually tracked, held, and released) is a meaningfully bigger backend change than what's graded here, and we're now several layers past the actual problem statement. I'll give you a real seat-picker UI wired to your existing engine, but seat identity is tracked in the browser only — the backend still holds seats by tier count, not by seat number. I'm flagging this so you know exactly what's real vs. cosmetic when you're asked about it.
+
+1. Remove the ticket limit
+bash
+python3 - <<'PYEOF'
+path = "pricing/engine.py"
+src = open(path).read()
+old = '''    total_tickets = sum(merged.values())
+    if total_tickets > show.max_tickets_per_booking:
+        raise BookingLimitExceeded(
+            f"Maximum {show.max_tickets_per_booking} tickets per booking.",
+            requested=total_tickets)'''
+new = '''    total_tickets = sum(merged.values())
+    # max_tickets_per_booking <= 0 means unlimited for that show.
+    if show.max_tickets_per_booking > 0 and total_tickets > show.max_tickets_per_booking:
+        raise BookingLimitExceeded(
+            f"Maximum {show.max_tickets_per_booking} tickets per booking.",
+            requested=total_tickets)'''
+assert old in src, "pattern not found, check engine.py manually"
+src = src.replace(old, new)
+open(path, "w").write(src)
+print("engine.py updated")
+PYEOF
+Set all shows to unlimited (0) in the data file:
+
+bash
+python3 - <<'PYEOF'
+import json
+data = json.load(open("data/shows.json"))
+for s in data["shows"]:
+    s["max_tickets_per_booking"] = 0
+json.dump(data, open("data/shows.json", "w"), indent=2)
+print("shows.json updated")
+PYEOF
+Update the test that checked the old limit behavior so the suite still passes:
+
+bash
+python3 - <<'PYEOF'
+path = "tests/test_engine.py"
+src = open(path).read()
+src = src.replace(
+    'def test_booking_limit():\n    with pytest.raises(BookingLimitExceeded):\n        quote(show(), [BookingItem("SILVER", 11)])',
+    'def test_booking_limit_enforced_when_set():\n'
+    '    s = show()\n'
+    '    s.max_tickets_per_booking = 10\n'
+    '    with pytest.raises(BookingLimitExceeded):\n'
+    '        quote(s, [BookingItem("SILVER", 11)])\n\n\n'
+    'def test_no_limit_when_max_is_zero():\n'
+    '    s = show()\n'
+    '    s.max_tickets_per_booking = 0\n'
+    '    q = quote(s, [BookingItem("SILVER", 20)])\n'
+    '    assert q["tickets"] == 20'
+)
+open(path, "w").write(src)
+print("tests updated")
+PYEOF
+Run tests to confirm nothing broke:
+
+bash
+pytest -q
+2. Seat layout picker (frontend)
+Replace the tier quantity inputs with a clickable seat grid per tier. Selecting seats fills the same hidden qty inputs your getQuote() already reads — so no backend wiring changes beyond what's above.
+
+bash
+python3 - <<'PYEOF'
+path = "static/index.html"
+src = open(path).read()
+
+# --- add seat-grid CSS ---
+css_insert = '''
+  .seat-map{margin-top:16px;}
+  .seat-tier-block{margin-top:16px;}
+  .seat-tier-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .seat-tier-head .name{font-weight:600;}
+  .seat-tier-head .price{color:var(--accent2); font-size:.85rem;}
+  .screen-curve{
+    height:10px; margin:4px auto 20px; width:90%; border-radius:50%;
+    background:linear-gradient(180deg, rgba(108,92,231,.5), transparent);
+  }
+  .screen-label{text-align:center; color:var(--muted); font-size:.7rem; letter-spacing:2px; margin-top:-14px;}
+  .seat-grid{display:flex; flex-wrap:wrap; gap:8px;}
+  .seat{
+    width:34px; height:34px; border-radius:8px 8px 4px 4px; display:flex; align-items:center; justify-content:center;
+    font-size:.7rem; cursor:pointer; border:1px solid var(--border); background:var(--card2); color:var(--muted);
+    user-select:none; transition:.12s;
+  }
+  .seat:hover{border-color:var(--accent);}
+  .seat.selected{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .seat.taken{background:#2a2f3d; color:#555; cursor:not-allowed; text-decoration:line-through;}
+  .legend{display:flex; gap:16px; margin-top:14px; font-size:.78rem; color:var(--muted);}
+  .legend .dot{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px;}
+'''
+src = src.replace("  #app{display:none;}", css_insert + "\n  #app{display:none;}")
+
+# --- replace #tiers div in markup with a seat-map container ---
+src = src.replace(
+    '<div id="tiers" class="show-grid"></div>',
+    '<div class="screen-curve"></div><div class="screen-label">SCREEN THIS WAY</div>'
+    '<div id="tiers" class="seat-map"></div>'
+    '<div class="legend">'
+    '<span><span class="dot" style="background:var(--card2);border:1px solid var(--border)"></span>Available</span>'
+    '<span><span class="dot" style="background:var(--accent)"></span>Selected</span>'
+    '<span><span class="dot" style="background:#2a2f3d"></span>Taken</span>'
+    '</div>'
+)
+
+# --- replace renderTiers() with a seat-grid version ---
+old_render = '''function renderTiers(show) {
+  currentShow = show;
+  document.getElementById('tiers').innerHTML = show.tiers.map(t => `
+    <div class="tier-row ${t.bookable ? '' : 'sold-out'}">
+      <div class="info">
+        <div class="tier-name">${t.name}</div>
+        <div class="tier-price">₹${(t.price_paisa/100).toFixed(2)}</div>
+        <div class="tier-seats">${t.bookable ? t.seats_available + ' seats left' : 'Sold out'}</div>
+      </div>
+      <input type="number" min="0" value="0" data-tier="${t.code}" ${t.bookable ? '' : 'disabled'}>
+    </div>`).join('');
+  document.getElementById('result').innerHTML = '';
+  document.getElementById('payment').innerHTML = '';
+}'''
+
+new_render = '''let selectedSeats = {}; // tier -> Set of seat labels
+
+function renderTiers(show) {
+  currentShow = show;
+  selectedSeats = {};
+  const MAX_RENDER = 60; // cap seats drawn per tier so the grid stays usable
+  const container = document.getElementById('tiers');
+
+  container.innerHTML = show.tiers.map(t => {
+    selectedSeats[t.code] = new Set();
+    const rowLen = 10;
+    const total = t.bookable ? Math.min(t.seats_available, MAX_RENDER) : Math.min(10, MAX_RENDER);
+    const takenCount = t.bookable ? 0 : total; // sold-out tier: all shown as taken
+    let seats = '';
+    for (let i = 0; i < total; i++) {
+      const row = String.fromCharCode(65 + Math.floor(i / rowLen));
+      const col = (i % rowLen) + 1;
+      const label = row + col;
+      const isTaken = i < takenCount;
+      seats += `<div class="seat ${isTaken ? 'taken' : ''}" data-tier="${t.code}" data-seat="${label}"
+                   onclick="toggleSeat(this)">${label}</div>`;
+    }
+    return `
+      <div class="seat-tier-block">
+        <div class="seat-tier-head">
+          <span class="name">${t.name}</span>
+          <span class="price">₹${(t.price_paisa/100).toFixed(2)} · ${t.bookable ? t.seats_available + ' left' : 'Sold out'}</span>
+        </div>
+        <div class="seat-grid">${seats}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('result').innerHTML = '';
+  document.getElementById('payment').innerHTML = '';
+}
+
+function toggleSeat(el) {
+  if (el.classList.contains('taken')) return;
+  const tier = el.dataset.tier;
+  const seat = el.dataset.seat;
+  if (selectedSeats[tier].has(seat)) {
+    selectedSeats[tier].delete(seat);
+    el.classList.remove('selected');
+  } else {
+    selectedSeats[tier].add(seat);
+    el.classList.add('selected');
+  }
+}'''
+
+assert old_render in src, "renderTiers pattern not found"
+src = src.replace(old_render, new_render)
+
+# --- update getQuote() to read from selectedSeats instead of number inputs ---
+old_items = '''  const items = [...document.querySelectorAll('#tiers input')]
+    .map(i => ({ tier: i.dataset.tier, qty: parseInt(i.value || '0', 10) }))
+    .filter(i => i.qty > 0);'''
+new_items = '''  const items = Object.entries(selectedSeats)
+    .map(([tier, seats]) => ({ tier, qty: seats.size }))
+    .filter(i => i.qty > 0);
+
+  if (items.length === 0) { alert('Select at least one seat.'); return; }'''
+assert old_items in src, "items pattern not found"
+src = src.replace(old_items, new_items)
+
+open(path, "w").write(src)
+print("index.html updated with seat map")
+PYEOF
+3. Push
+bash
+git add -A
+git commit -m "Add clickable seat-map UI, remove per-booking ticket limit"
+git push
+Reload /static/index.html — each tier now shows a grid of individual seat boxes (A1, A2… by row), you click seats to select/deselect them (turns purple), the taken/sold-out ones are struck through and disabled, and the count of clicked seats per tier drives the same quote you had before. The ticket cap is gone.
+
+Be honest about this in REASONING.md if you use it in your demo — something like: "Seat selection is a UI layer over tier-level pricing; seats are not individually tracked or held server-side." That protects you if an evaluator clicks two different seats in the same tier and asks why they're priced identically (they are — pricing is still per-tier, as the problem statement actually asks for).
